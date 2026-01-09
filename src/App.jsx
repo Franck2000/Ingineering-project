@@ -1,0 +1,157 @@
+import React, { useState, useEffect } from 'react';
+import Sidebar from './components/Sidebar';
+import Header from './components/Header';
+import StatsCards from './components/StatsCards';
+import Charts from './components/Charts';
+import AlertsTable from './components/AlertsTable';
+import { useFilters } from './hooks/useFilters';
+import { usePagination } from './hooks/usePagination';
+import { useDataFetch } from './hooks/useDataFetch';
+import { dataService } from './services/dataService';
+
+/**
+ * Composant principal de l'application
+ * Suit le principe de composition et d'orchestration
+ * Gère la coordination entre les différents composants
+ */
+function App() {
+  // État local pour les données
+  const [alerts, setAlerts] = useState([]);
+  const [filteredAlerts, setFilteredAlerts] = useState([]);
+
+  // Gestion des filtres avec le hook personnalisé - SANS FILTRES INITIAUX
+  const {
+    filters,
+    toggleProvider,
+    setService,
+    setSeverity,
+    setEnvironment,
+    setRegion,
+    clearFilters
+  } = useFilters({
+    providers: [],  // Vide par défaut
+    service: '',    // Vide par défaut
+    region: ''      // Vide par défaut
+  });
+
+  // Chargement des données avec les hooks personnalisés
+  const { data: statistics, refetch: refetchStats } = useDataFetch(
+    () => dataService.getStatistics(),
+    []
+  );
+
+  const { data: timeSeriesData } = useDataFetch(
+    () => dataService.getTimeSeriesData(),
+    []
+  );
+
+  const { data: providerDistribution } = useDataFetch(
+    () => dataService.getProviderDistribution(),
+    []
+  );
+
+  const { data: impactedProviders } = useDataFetch(
+    () => dataService.getImpactedProviders(),
+    []
+  );
+
+  const { data: topServices } = useDataFetch(
+    () => dataService.getTopServices(),
+    []
+  );
+
+  // Chargement initial des alertes
+  useEffect(() => {
+    const loadAlerts = async () => {
+      const data = await dataService.getAlerts();
+      setAlerts(data);
+      setFilteredAlerts(data); // Afficher toutes les alertes au départ
+    };
+    loadAlerts();
+  }, []);
+
+  // Application des filtres
+  useEffect(() => {
+    const applyFilters = async () => {
+      const filtered = await dataService.getAlerts(filters);
+      setFilteredAlerts(filtered);
+    };
+    applyFilters();
+  }, [filters]);
+
+  // Pagination des alertes filtrées
+  const {
+    currentPage,
+    totalPages,
+    currentItems: currentAlerts,
+    nextPage,
+    previousPage,
+    hasNextPage,
+    hasPreviousPage,
+    resetPage
+  } = usePagination(filteredAlerts);
+
+  // Réinitialiser la page lors du changement de filtres
+  useEffect(() => {
+    resetPage();
+  }, [filteredAlerts, resetPage]);
+
+  // Handler pour le refresh
+  const handleRefresh = async () => {
+    const data = await dataService.getAlerts();
+    setAlerts(data);
+    setFilteredAlerts(data);
+    refetchStats();
+  };
+
+  return (
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Sidebar */}
+      <Sidebar
+        filters={filters}
+        onToggleProvider={toggleProvider}
+        onServiceChange={setService}
+        onSeverityChange={setSeverity}
+        onEnvironmentChange={setEnvironment}
+        onRegionChange={setRegion}
+        onClearFilters={clearFilters}
+      />
+
+      {/* Main Content */}
+      <div className="flex-1 p-8 overflow-y-auto">
+        {/* Header */}
+        <Header onRefresh={handleRefresh} />
+
+        {/* Stats Cards */}
+        {statistics && impactedProviders && topServices && (
+          <StatsCards
+            statistics={statistics}
+            impactedProviders={impactedProviders}
+            topServices={topServices}
+          />
+        )}
+
+        {/* Charts */}
+        {timeSeriesData && providerDistribution && (
+          <Charts
+            timeSeriesData={timeSeriesData}
+            providerDistribution={providerDistribution}
+          />
+        )}
+
+        {/* Alerts Table */}
+        <AlertsTable
+          alerts={currentAlerts}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onNextPage={nextPage}
+          onPreviousPage={previousPage}
+          hasNextPage={hasNextPage}
+          hasPreviousPage={hasPreviousPage}
+        />
+      </div>
+    </div>
+  );
+}
+
+export default App;
