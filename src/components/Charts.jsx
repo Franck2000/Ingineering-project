@@ -18,6 +18,9 @@ import {
  * Suit le principe de responsabilité unique (Single Responsibility)
  */
 const Charts = ({ timeSeriesData, providerDistribution }) => {
+  // Détecte si le mode sombre est actif
+  const isDarkMode = document.documentElement.classList.contains('dark');
+
   // Label personnalisé pour le donut chart
   const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
     const RADIAN = Math.PI / 180;
@@ -43,21 +46,21 @@ const Charts = ({ timeSeriesData, providerDistribution }) => {
     <div className="grid grid-cols-3 gap-6 mb-8">
       {/* Stacked Bar Chart */}
       <div className="col-span-2 card">
-        <div className="text-lg font-bold text-gray-900 mb-6">
+        <div className="text-lg font-bold text-gray-900 dark:text-white mb-6">
           Alerts Over Time
         </div>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={timeSeriesData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#374151' : '#E5E7EB'} vertical={false} />
             <XAxis
               dataKey="time"
-              stroke="#9CA3AF"
+              stroke={isDarkMode ? '#9CA3AF' : '#9CA3AF'}
               style={{ fontSize: '0.85rem', fontWeight: '500' }}
-              axisLine={{ stroke: '#E5E7EB' }}
+              axisLine={{ stroke: isDarkMode ? '#374151' : '#E5E7EB' }}
               tickLine={false}
             />
             <YAxis
-              stroke="#9CA3AF"
+              stroke={isDarkMode ? '#9CA3AF' : '#9CA3AF'}
               style={{ fontSize: '0.85rem', fontWeight: '500' }}
               axisLine={false}
               tickLine={false}
@@ -65,10 +68,11 @@ const Charts = ({ timeSeriesData, providerDistribution }) => {
             />
             <Tooltip
               contentStyle={{
-                background: 'white',
-                border: '2px solid #E5E7EB',
+                background: isDarkMode ? '#1F2937' : 'white',
+                border: `2px solid ${isDarkMode ? '#374151' : '#E5E7EB'}`,
                 borderRadius: '8px',
-                fontSize: '0.85rem'
+                fontSize: '0.85rem',
+                color: isDarkMode ? '#F9FAFB' : '#111827'
               }}
             />
             <Bar dataKey="Azure" stackId="a" fill="#3B82F6" radius={[0, 0, 0, 0]} />
@@ -102,7 +106,7 @@ const Charts = ({ timeSeriesData, providerDistribution }) => {
               height={36}
               iconType="square"
               formatter={(value) => (
-                <span style={{ color: '#374151', fontSize: '0.9rem', fontWeight: '600' }}>
+                <span style={{ color: isDarkMode ? '#E5E7EB' : '#374151', fontSize: '0.9rem', fontWeight: '600' }}>
                   {value}
                 </span>
               )}

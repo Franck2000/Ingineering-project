@@ -15,6 +15,24 @@ import { dataService } from './services/dataService';
  * Gère la coordination entre les différents composants
  */
 function App() {
+  // État pour le mode sombre
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  // Appliquer le mode sombre au document
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+  }, [darkMode]);
+
+  const toggleDarkMode = () => setDarkMode(!darkMode);
+
   // État local pour les données
   const [alerts, setAlerts] = useState([]);
   const [filteredAlerts, setFilteredAlerts] = useState([]);
@@ -105,7 +123,7 @@ function App() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       {/* Sidebar */}
       <Sidebar
         filters={filters}
@@ -120,7 +138,7 @@ function App() {
       {/* Main Content */}
       <div className="flex-1 p-8 overflow-y-auto">
         {/* Header */}
-        <Header onRefresh={handleRefresh} />
+        <Header onRefresh={handleRefresh} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
 
         {/* Stats Cards */}
         {statistics && impactedProviders && topServices && (
