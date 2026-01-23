@@ -4,7 +4,8 @@
  */
 class WazuhAuthService {
   constructor() {
-    this.baseUrl = import.meta.env.VITE_WAZUH_API_URL || 'https://localhost:55000';
+    // Utiliser le proxy Vite pour éviter les erreurs CORS
+    this.baseUrl = '/api/wazuh';
     this.token = null;
   }
 
