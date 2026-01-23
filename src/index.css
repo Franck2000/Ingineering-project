@@ -48,6 +48,109 @@
   .radio-custom.selected {
     @apply border-primary-500;
   }
+
+  /* ===== LOGIN PAGE STYLES ===== */
+  .login-container {
+    @apply min-h-screen w-full flex items-center justify-center relative overflow-hidden;
+  }
+
+  .login-background {
+    @apply absolute inset-0;
+    background: linear-gradient(135deg, #fce7f3 0%, #e9d5ff 50%, #c7d2fe 100%);
+  }
+
+  .login-grid {
+    @apply absolute inset-0;
+    background-image: 
+      linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px);
+    background-size: 50px 50px;
+    mask-image: radial-gradient(ellipse 80% 50% at 50% 50%, black 40%, transparent 100%);
+  }
+
+  .login-content {
+    @apply relative z-10 w-full max-w-md mx-auto p-8 flex flex-col items-center;
+  }
+
+  .login-badge {
+    @apply px-4 py-1.5 bg-amber-100 text-amber-800 rounded-full text-sm font-semibold mb-6;
+  }
+
+  .login-title {
+    @apply text-4xl font-bold text-gray-900 mb-8 text-center;
+    font-family: 'Georgia', serif;
+    font-style: italic;
+  }
+
+  .login-form {
+    @apply w-full space-y-5;
+  }
+
+  .login-field {
+    @apply flex flex-col gap-2;
+  }
+
+  .login-label {
+    @apply text-sm font-medium text-gray-700;
+  }
+
+  .login-input {
+    @apply w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800
+           focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-transparent
+           placeholder-gray-400 transition-all duration-200;
+  }
+
+  .login-options {
+    @apply flex items-center justify-between;
+  }
+
+  .login-checkbox-label {
+    @apply flex items-center gap-2 cursor-pointer text-sm text-gray-600;
+  }
+
+  .login-checkbox {
+    @apply w-4 h-4 rounded border-gray-300 text-purple-500 focus:ring-purple-300;
+  }
+
+  .login-forgot {
+    @apply text-sm text-gray-600 hover:text-purple-600 transition-colors;
+  }
+
+  .login-button {
+    @apply w-full py-3.5 bg-gray-900 text-white rounded-xl font-semibold text-base
+           hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900
+           transition-all duration-200 flex items-center justify-center;
+  }
+
+  .login-button:disabled {
+    @apply opacity-70 cursor-not-allowed;
+  }
+
+  .login-spinner {
+    @apply flex items-center gap-2;
+  }
+
+  .login-divider {
+    @apply flex items-center w-full my-6;
+  }
+
+  .login-divider::before,
+  .login-divider::after {
+    content: '';
+    @apply flex-1 border-t border-gray-300;
+  }
+
+  .login-divider span {
+    @apply px-4 text-sm text-gray-500;
+  }
+
+  .login-info {
+    @apply text-center text-sm text-gray-500;
+  }
+
+  .login-error {
+    @apply flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm;
+  }
 }
 
 @layer utilities {

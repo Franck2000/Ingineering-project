@@ -4,10 +4,12 @@ import Header from './components/Header';
 import StatsCards from './components/StatsCards';
 import Charts from './components/Charts';
 import AlertsTable from './components/AlertsTable';
+import LoginPage from './components/LoginPage';
 import { useFilters } from './hooks/useFilters';
 import { usePagination } from './hooks/usePagination';
 import { useDataFetch } from './hooks/useDataFetch';
 import { dataService } from './services/dataService';
+import { wazuhAuth } from './services/wazuhAuth';
 
 /**
  * Composant principal de l'application
@@ -15,11 +17,32 @@ import { dataService } from './services/dataService';
  * Gère la coordination entre les différents composants
  */
 function App() {
+  // État pour l'authentification
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return wazuhAuth.isAuthenticated();
+  });
+
   // État pour le mode sombre
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
   });
+
+  // Gérer la connexion réussie
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+  };
+
+  // Gérer la déconnexion
+  const handleLogout = () => {
+    wazuhAuth.logout();
+    setIsAuthenticated(false);
+  };
+
+  // Si non authentifié, afficher la page de connexion
+  if (!isAuthenticated) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
 
   // Appliquer le mode sombre au document
   useEffect(() => {
@@ -138,7 +161,13 @@ function App() {
       {/* Main Content */}
       <div className="flex-1 p-8 overflow-y-auto">
         {/* Header */}
-        <Header onRefresh={handleRefresh} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
+        <Header 
+          onRefresh={handleRefresh} 
+          darkMode={darkMode} 
+          toggleDarkMode={toggleDarkMode}
+          onLogout={handleLogout}
+          username={wazuhAuth.getUsername()}
+        />
 
         {/* Stats Cards */}
         {statistics && impactedProviders && topServices && (

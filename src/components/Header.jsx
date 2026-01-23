@@ -1,11 +1,13 @@
-import React from 'react';
-import { ChevronDown, User, Moon, Sun } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronDown, User, Moon, Sun, LogOut } from 'lucide-react';
 
 /**
  * Composant Header - Affiche le titre et les actions du dashboard
  * Suit le principe de responsabilité unique (Single Responsibility)
  */
-const Header = ({ onRefresh, darkMode, toggleDarkMode }) => {
+const Header = ({ onRefresh, darkMode, toggleDarkMode, onLogout, username }) => {
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
   return (
     <div className="flex justify-between items-center mb-8">
       <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white transition-colors">
@@ -34,17 +36,38 @@ const Header = ({ onRefresh, darkMode, toggleDarkMode }) => {
         </button>
         
         {/* User Menu */}
-        <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-          <div className="w-8 h-8 bg-gray-200 dark:bg-gray-600 rounded-full flex items-center justify-center">
-            <User size={18} className="text-gray-600 dark:text-gray-300" />
-          </div>
-          <div className="flex flex-col items-start">
-            <div className="text-sm font-semibold text-gray-900 dark:text-white">
-              Merit Desired
+        <div className="relative">
+          <div 
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            <div className="w-8 h-8 bg-gray-200 dark:bg-gray-600 rounded-full flex items-center justify-center">
+              <User size={18} className="text-gray-600 dark:text-gray-300" />
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">Administrator</div>
+            <div className="flex flex-col items-start">
+              <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                {username || 'Admin'}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">Administrator</div>
+            </div>
+            <ChevronDown size={16} className={`text-gray-600 dark:text-gray-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
           </div>
-          <ChevronDown size={16} className="text-gray-600 dark:text-gray-400" />
+
+          {/* Dropdown Menu */}
+          {showUserMenu && (
+            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+              <button
+                onClick={() => {
+                  setShowUserMenu(false);
+                  onLogout();
+                }}
+                className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <LogOut size={18} />
+                <span>Déconnexion</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
