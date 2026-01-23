@@ -28,34 +28,6 @@ function App() {
     return saved ? JSON.parse(saved) : false;
   });
 
-  // Gérer la connexion réussie
-  const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
-  };
-
-  // Gérer la déconnexion
-  const handleLogout = () => {
-    wazuhAuth.logout();
-    setIsAuthenticated(false);
-  };
-
-  // Si non authentifié, afficher la page de connexion
-  if (!isAuthenticated) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
-  }
-
-  // Appliquer le mode sombre au document
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    localStorage.setItem('darkMode', JSON.stringify(darkMode));
-  }, [darkMode]);
-
-  const toggleDarkMode = () => setDarkMode(!darkMode);
-
   // État local pour les données
   const [alerts, setAlerts] = useState([]);
   const [filteredAlerts, setFilteredAlerts] = useState([]);
@@ -101,6 +73,28 @@ function App() {
     []
   );
 
+  // Pagination des alertes filtrées
+  const {
+    currentPage,
+    totalPages,
+    currentItems: currentAlerts,
+    nextPage,
+    previousPage,
+    hasNextPage,
+    hasPreviousPage,
+    resetPage
+  } = usePagination(filteredAlerts);
+
+  // Appliquer le mode sombre au document
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+  }, [darkMode]);
+
   // Chargement initial des alertes
   useEffect(() => {
     const loadAlerts = async () => {
@@ -120,22 +114,23 @@ function App() {
     applyFilters();
   }, [filters]);
 
-  // Pagination des alertes filtrées
-  const {
-    currentPage,
-    totalPages,
-    currentItems: currentAlerts,
-    nextPage,
-    previousPage,
-    hasNextPage,
-    hasPreviousPage,
-    resetPage
-  } = usePagination(filteredAlerts);
-
   // Réinitialiser la page lors du changement de filtres
   useEffect(() => {
     resetPage();
   }, [filteredAlerts, resetPage]);
+
+  // Gérer la connexion réussie
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+  };
+
+  // Gérer la déconnexion
+  const handleLogout = () => {
+    wazuhAuth.logout();
+    setIsAuthenticated(false);
+  };
+
+  const toggleDarkMode = () => setDarkMode(!darkMode);
 
   // Handler pour le refresh
   const handleRefresh = async () => {
@@ -144,6 +139,11 @@ function App() {
     setFilteredAlerts(data);
     refetchStats();
   };
+
+  // Si non authentifié, afficher la page de connexion
+  if (!isAuthenticated) {
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
