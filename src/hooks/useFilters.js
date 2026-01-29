@@ -11,7 +11,8 @@ export const useFilters = (initialFilters = {}) => {
     service: initialFilters.service || '',
     severity: initialFilters.severity || '',
     environment: initialFilters.environment || '',
-    region: initialFilters.region || ''
+    region: initialFilters.region || '',
+    source: initialFilters.source || ''
   });
 
   /**
@@ -55,6 +56,13 @@ export const useFilters = (initialFilters = {}) => {
   }, []);
 
   /**
+   * Définit la source sélectionnée
+   */
+  const setSource = useCallback((source) => {
+    setFilters(prev => ({ ...prev, source }));
+  }, []);
+
+  /**
    * Réinitialise tous les filtres
    */
   const clearFilters = useCallback(() => {
@@ -63,7 +71,8 @@ export const useFilters = (initialFilters = {}) => {
       service: '',
       severity: '',
       environment: '',
-      region: ''
+      region: '',
+      source: ''
     });
   }, []);
 
@@ -77,6 +86,7 @@ export const useFilters = (initialFilters = {}) => {
     if (filters.severity) count++;
     if (filters.environment) count++;
     if (filters.region) count++;
+    if (filters.source) count++;
     return count;
   }, [filters]);
 
@@ -87,6 +97,7 @@ export const useFilters = (initialFilters = {}) => {
     setSeverity,
     setEnvironment,
     setRegion,
+    setSource,
     clearFilters,
     getActiveFiltersCount
   };

@@ -17,7 +17,7 @@ export {
 export const QUICK_FILTERS = [
   { name: 'AWS', icon: '△', color: '#10B981' },
   { name: 'Critical', icon: '⬢', color: '#F59E0B' },
-  { name: 'Fixme', icon: '🔥', color: '#EF4444' }
+  { name: 'Fixme', icon: '�', color: '#EF4444' }
 ];
 
 // Services cloud surveillés
@@ -52,4 +52,9 @@ export const REGIONS = [
   'eu-west-1',
   'ap-south-1',
   'us-west-2'
+];
+
+// Sources des logs (agents Wazuh) - Liste par défaut, sera complétée dynamiquement
+export const SOURCES = [
+  { value: '', label: 'Toutes les sources' }
 ];

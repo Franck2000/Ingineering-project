@@ -1,6 +1,6 @@
 import React from 'react';
-import { ChevronDown } from 'lucide-react';
-import { CLOUD_PROVIDERS, QUICK_FILTERS, SERVICES, SEVERITIES, REGIONS } from '../constants';
+import { ChevronDown, Monitor } from 'lucide-react';
+import { CLOUD_PROVIDERS, QUICK_FILTERS, SERVICES, SEVERITIES, REGIONS, SOURCES } from '../constants';
 
 /**
  * Composant Sidebar - Gère l'affichage des filtres
@@ -13,7 +13,9 @@ const Sidebar = ({
   onSeverityChange,
   onEnvironmentChange,
   onRegionChange,
-  onClearFilters
+  onSourceChange,
+  onClearFilters,
+  availableSources = []
 }) => {
   return (
     <div className="w-80 bg-white dark:bg-gray-800 border-r-2 border-gray-200 dark:border-gray-700 p-6 flex flex-col gap-7 h-screen overflow-y-auto scrollbar-thin sticky top-0 transition-colors duration-300">
@@ -145,6 +147,33 @@ const Sidebar = ({
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Source (Agent) */}
+      <div className="flex flex-col gap-2">
+        <label className="text-sm font-semibold text-gray-700 dark:text-gray-200 flex items-center gap-2">
+          <Monitor size={16} className="text-gray-500" />
+          Source (Agent)
+        </label>
+        <select
+          value={filters.source}
+          onChange={(e) => onSourceChange(e.target.value)}
+          className="input-field appearance-none cursor-pointer"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 0.75rem center',
+            backgroundSize: '1.25rem',
+            paddingRight: '2.5rem'
+          }}
+        >
+          <option value="">Toutes les sources</option>
+          {availableSources.map(source => (
+            <option key={source} value={source}>
+              {source}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Region */}

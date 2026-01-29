@@ -1,23 +1,73 @@
-import React, { useState } from 'react';
-import { ChevronDown, User, Moon, Sun, LogOut } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronDown, User, Moon, Sun, LogOut, RefreshCw, Radio } from 'lucide-react';
 
 /**
  * Composant Header - Affiche le titre et les actions du dashboard
  * Suit le principe de responsabilité unique (Single Responsibility)
  */
-const Header = ({ onRefresh, darkMode, toggleDarkMode, onLogout, username }) => {
+const Header = ({ onRefresh, darkMode, toggleDarkMode, onLogout, username, lastUpdate }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [timeSinceUpdate, setTimeSinceUpdate] = useState('');
+
+  // Mettre à jour l'affichage du temps écoulé
+  useEffect(() => {
+    const updateTimeSince = () => {
+      if (!lastUpdate) return;
+      
+      const now = new Date();
+      const diff = Math.floor((now - lastUpdate) / 1000);
+      
+      if (diff < 5) {
+        setTimeSinceUpdate('à l\'instant');
+      } else if (diff < 60) {
+        setTimeSinceUpdate(`il y a ${diff}s`);
+      } else if (diff < 3600) {
+        setTimeSinceUpdate(`il y a ${Math.floor(diff / 60)}min`);
+      } else {
+        setTimeSinceUpdate(`il y a ${Math.floor(diff / 3600)}h`);
+      }
+    };
+
+    updateTimeSince();
+    const interval = setInterval(updateTimeSince, 1000);
+    return () => clearInterval(interval);
+  }, [lastUpdate]);
+
+  // Handler pour le refresh avec animation
+  const handleRefreshClick = async () => {
+    setIsRefreshing(true);
+    await onRefresh();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
 
   return (
     <div className="flex justify-between items-center mb-8">
-      <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white transition-colors">
-        Cloud Security Monitoring Dashboard
-      </h1>
+      <div className="flex items-center gap-4">
+        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white transition-colors">
+          Cloud Security Monitoring Dashboard
+        </h1>
+        {/* Indicateur temps réel */}
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-full">
+          <Radio size={14} className="text-green-600 dark:text-green-400 animate-pulse" />
+          <span className="text-xs font-medium text-green-700 dark:text-green-400">LIVE</span>
+        </div>
+      </div>
       
       <div className="flex gap-3 items-center">
+        {/* Affichage de la dernière mise à jour */}
+        {lastUpdate && (
+          <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg">
+            <span>Mis à jour {timeSinceUpdate}</span>
+          </div>
+        )}
         <button className="btn-secondary">Last 24h</button>
-        <button className="btn-secondary">Live</button>
-        <button onClick={onRefresh} className="btn-primary">
+        <button 
+          onClick={handleRefreshClick} 
+          className="btn-primary flex items-center gap-2"
+          disabled={isRefreshing}
+        >
+          <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
           Refresh
         </button>
         <button className="btn-secondary">Save View</button>

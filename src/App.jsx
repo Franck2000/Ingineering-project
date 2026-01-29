@@ -10,6 +10,7 @@ import { usePagination } from './hooks/usePagination';
 import { useDataFetch } from './hooks/useDataFetch';
 import { dataService } from './services/dataService';
 import { wazuhAuth } from './services/wazuhAuth';
+import { POLLING_CONFIG } from './config/api.config';
 
 /**
  * Composant principal de l'application
@@ -31,6 +32,7 @@ function App() {
   // État local pour les données
   const [alerts, setAlerts] = useState([]);
   const [filteredAlerts, setFilteredAlerts] = useState([]);
+  const [lastUpdate, setLastUpdate] = useState(new Date());
 
   // Gestion des filtres avec le hook personnalisé - SANS FILTRES INITIAUX
   const {
@@ -40,12 +42,17 @@ function App() {
     setSeverity,
     setEnvironment,
     setRegion,
+    setSource,
     clearFilters
   } = useFilters({
     providers: [],  // Vide par défaut
     service: '',    // Vide par défaut
-    region: ''      // Vide par défaut
+    region: '',     // Vide par défaut
+    source: ''      // Vide par défaut
   });
+
+  // Sources disponibles extraites des alertes
+  const [availableSources, setAvailableSources] = useState([]);
 
   // Chargement des données avec les hooks personnalisés
   const { data: statistics, refetch: refetchStats } = useDataFetch(
@@ -95,14 +102,34 @@ function App() {
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
   }, [darkMode]);
 
-  // Chargement initial des alertes
+  // Chargement initial et polling des alertes en temps réel
   useEffect(() => {
     const loadAlerts = async () => {
-      const data = await dataService.getAlerts();
-      setAlerts(data);
-      setFilteredAlerts(data); // Afficher toutes les alertes au départ
+      try {
+        const data = await dataService.getAlerts();
+        setAlerts(data);
+        setFilteredAlerts(data);
+        setLastUpdate(new Date());
+        
+        // Extraire les sources uniques des alertes (agent.name ou environment)
+        const sources = [...new Set(data.map(alert => alert.environment).filter(Boolean))];
+        setAvailableSources(sources.sort());
+      } catch (error) {
+        console.error('Erreur chargement alertes:', error);
+      }
     };
+
+    // Chargement initial
     loadAlerts();
+
+    // Polling automatique pour le temps réel
+    const pollingInterval = setInterval(() => {
+      dataService.invalidateCache(); // Forcer le rafraîchissement
+      loadAlerts();
+    }, POLLING_CONFIG.ALERTS_INTERVAL);
+
+    // Cleanup à la destruction du composant
+    return () => clearInterval(pollingInterval);
   }, []);
 
   // Application des filtres
@@ -132,11 +159,13 @@ function App() {
 
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
-  // Handler pour le refresh
+  // Handler pour le refresh manuel
   const handleRefresh = async () => {
+    dataService.invalidateCache(); // Invalider le cache pour forcer le refresh
     const data = await dataService.getAlerts();
     setAlerts(data);
     setFilteredAlerts(data);
+    setLastUpdate(new Date());
     refetchStats();
   };
 
@@ -155,7 +184,9 @@ function App() {
         onSeverityChange={setSeverity}
         onEnvironmentChange={setEnvironment}
         onRegionChange={setRegion}
+        onSourceChange={setSource}
         onClearFilters={clearFilters}
+        availableSources={availableSources}
       />
 
       {/* Main Content */}
@@ -167,6 +198,7 @@ function App() {
           toggleDarkMode={toggleDarkMode}
           onLogout={handleLogout}
           username={wazuhAuth.getUsername()}
+          lastUpdate={lastUpdate}
         />
 
         {/* Stats Cards */}

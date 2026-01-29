@@ -1,5 +1,5 @@
-import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { SEVERITY_COLORS, STATUS_COLORS, CLOUD_PROVIDERS } from '../constants';
 
 /**
@@ -7,6 +7,25 @@ import { SEVERITY_COLORS, STATUS_COLORS, CLOUD_PROVIDERS } from '../constants';
  * Suit le principe de responsabilité unique (Single Responsibility)
  */
 const AlertsTable = ({ alerts, currentPage, totalPages, onNextPage, onPreviousPage, hasNextPage, hasPreviousPage }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filtrer les alertes selon la recherche
+  const filteredAlerts = useMemo(() => {
+    if (!searchQuery.trim()) return alerts;
+    
+    const query = searchQuery.toLowerCase();
+    return alerts.filter(alert => 
+      alert.message?.toLowerCase().includes(query) ||
+      alert.description?.toLowerCase().includes(query) ||
+      alert.provider?.toLowerCase().includes(query) ||
+      alert.service?.toLowerCase().includes(query) ||
+      alert.severity?.toLowerCase().includes(query) ||
+      alert.status?.toLowerCase().includes(query) ||
+      alert.environment?.toLowerCase().includes(query) ||
+      alert.time?.toLowerCase().includes(query)
+    );
+  }, [alerts, searchQuery]);
+
   // Trouve l'icône du provider
   const getProviderIcon = (providerName) => {
     const provider = CLOUD_PROVIDERS.find(p => p.name === providerName);
@@ -21,13 +40,43 @@ const AlertsTable = ({ alerts, currentPage, totalPages, onNextPage, onPreviousPa
 
   return (
     <div className="card">
-      {/* Header */}
+      {/* Header avec barre de recherche */}
       <div className="flex justify-between items-center mb-6">
         <div className="text-lg font-bold text-gray-900 dark:text-white">Alerts Table</div>
-        <div className="flex gap-2">
-          <div className="w-2.5 h-2.5 bg-gray-300 dark:bg-gray-600 rounded-full cursor-pointer hover:bg-gray-400 dark:hover:bg-gray-500"></div>
-          <div className="w-2.5 h-2.5 bg-gray-300 dark:bg-gray-600 rounded-full cursor-pointer hover:bg-gray-400 dark:hover:bg-gray-500"></div>
-          <div className="w-2.5 h-2.5 bg-gray-300 dark:bg-gray-600 rounded-full cursor-pointer hover:bg-gray-400 dark:hover:bg-gray-500"></div>
+        
+        {/* Barre de recherche */}
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Rechercher dans les logs..."
+              className="w-80 pl-10 pr-10 py-2 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 transition-colors"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+          
+          {/* Compteur de résultats */}
+          {searchQuery && (
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {filteredAlerts.length} résultat{filteredAlerts.length !== 1 ? 's' : ''}
+            </span>
+          )}
+          
+          <div className="flex gap-2">
+            <div className="w-2.5 h-2.5 bg-gray-300 dark:bg-gray-600 rounded-full cursor-pointer hover:bg-gray-400 dark:hover:bg-gray-500"></div>
+            <div className="w-2.5 h-2.5 bg-gray-300 dark:bg-gray-600 rounded-full cursor-pointer hover:bg-gray-400 dark:hover:bg-gray-500"></div>
+            <div className="w-2.5 h-2.5 bg-gray-300 dark:bg-gray-600 rounded-full cursor-pointer hover:bg-gray-400 dark:hover:bg-gray-500"></div>
+          </div>
         </div>
       </div>
 
@@ -57,51 +106,66 @@ const AlertsTable = ({ alerts, currentPage, totalPages, onNextPage, onPreviousPa
             </tr>
           </thead>
           <tbody>
-            {alerts.map((alert) => (
-              <tr
-                key={alert.id}
-                className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700"
-              >
-                <td className="px-3.5 py-4 text-sm text-gray-700 dark:text-gray-300">
-                  {alert.time}
-                </td>
-                <td className="px-3.5 py-4">
-                  <div className="flex items-center gap-2.5">
-                    <span
-                      className="text-xl"
-                      style={{ color: getProviderColor(alert.provider) }}
-                    >
-                      {getProviderIcon(alert.provider)}
-                    </span>
-                    <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
-                      {alert.provider}
-                    </span>
-                  </div>
-                </td>
-                <td className="px-3.5 py-4 text-sm text-gray-700 dark:text-gray-300">
-                  {alert.service}
-                </td>
-                <td className="px-3.5 py-4">
-                  <span
-                    className="inline-block px-3.5 py-1.5 rounded-md text-xs font-bold text-white"
-                    style={{ backgroundColor: SEVERITY_COLORS[alert.severity] }}
-                  >
-                    {alert.severity}
-                  </span>
-                </td>
-                <td className="px-3.5 py-4 text-sm text-gray-700 dark:text-gray-300">
-                  {alert.message}
-                </td>
-                <td className="px-3.5 py-4">
-                  <span
-                    className="inline-block px-3.5 py-1.5 rounded-md text-xs font-bold text-white"
-                    style={{ backgroundColor: STATUS_COLORS[alert.status] }}
-                  >
-                    {alert.status}
-                  </span>
+            {filteredAlerts.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="px-3.5 py-8 text-center text-gray-500 dark:text-gray-400">
+                  {searchQuery ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <Search size={24} className="text-gray-300 dark:text-gray-600" />
+                      <span>Aucun résultat pour "{searchQuery}"</span>
+                    </div>
+                  ) : (
+                    'Aucune alerte à afficher'
+                  )}
                 </td>
               </tr>
-            ))}
+            ) : (
+              filteredAlerts.map((alert) => (
+                <tr
+                  key={alert.id}
+                  className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700"
+                >
+                  <td className="px-3.5 py-4 text-sm text-gray-700 dark:text-gray-300">
+                    {alert.time}
+                  </td>
+                  <td className="px-3.5 py-4">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className="text-xl"
+                        style={{ color: getProviderColor(alert.provider) }}
+                      >
+                        {getProviderIcon(alert.provider)}
+                      </span>
+                      <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                        {alert.provider}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-3.5 py-4 text-sm text-gray-700 dark:text-gray-300">
+                    {alert.service}
+                  </td>
+                  <td className="px-3.5 py-4">
+                    <span
+                      className="inline-block px-3.5 py-1.5 rounded-md text-xs font-bold text-white"
+                      style={{ backgroundColor: SEVERITY_COLORS[alert.severity] }}
+                    >
+                      {alert.severity}
+                    </span>
+                  </td>
+                  <td className="px-3.5 py-4 text-sm text-gray-700 dark:text-gray-300">
+                    {alert.message}
+                  </td>
+                  <td className="px-3.5 py-4">
+                    <span
+                      className="inline-block px-3.5 py-1.5 rounded-md text-xs font-bold text-white"
+                      style={{ backgroundColor: STATUS_COLORS[alert.status] }}
+                    >
+                      {alert.status}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

@@ -115,8 +115,17 @@ export const PAGINATION = {
 // ============================================
 
 export const CACHE_CONFIG = {
-  ALERTS_TTL: 30000,  // 30 secondes
-  STATS_TTL: 60000,   // 1 minute
+  ALERTS_TTL: 5000,   // 5 secondes - pour temps réel
+  STATS_TTL: 10000,   // 10 secondes
+};
+
+// ============================================
+// POLLING (Rafraîchissement automatique)
+// ============================================
+
+export const POLLING_CONFIG = {
+  ALERTS_INTERVAL: 5000,  // Rafraîchir les alertes toutes les 5 secondes
+  STATS_INTERVAL: 10000,  // Rafraîchir les stats toutes les 10 secondes
 };
 
 // ============================================

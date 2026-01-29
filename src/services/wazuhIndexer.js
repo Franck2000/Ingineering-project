@@ -187,9 +187,12 @@ class WazuhIndexerService {
    * Transforme une alerte OpenSearch vers le format UI
    */
   #transformAlert(source, id) {
+    const rawTimestamp = source.timestamp || source['@timestamp'];
+    
     return {
       id: id || source.id || `alert-${Date.now()}`,
-      timestamp: source.timestamp || source['@timestamp'],
+      timestamp: rawTimestamp,
+      time: this.#formatTime(rawTimestamp),
       provider: detectCloudProvider(source),
       service: source.rule?.groups?.[0] || 'Wazuh',
       severity: mapRuleLevelToSeverity(source.rule?.level),
@@ -228,6 +231,50 @@ class WazuhIndexerService {
       acc[key] = doc_count;
       return acc;
     }, {});
+  }
+
+  /**
+   * Formate un timestamp pour l'affichage
+   */
+  #formatTime(timestamp) {
+    if (!timestamp) return 'N/A';
+    
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffSec = Math.floor(diffMs / 1000);
+      const diffMin = Math.floor(diffSec / 60);
+      const diffHour = Math.floor(diffMin / 60);
+      const diffDay = Math.floor(diffHour / 24);
+
+      // Si moins de 60 secondes
+      if (diffSec < 60) {
+        return diffSec <= 5 ? 'À l\'instant' : `Il y a ${diffSec}s`;
+      }
+      // Si moins de 60 minutes
+      if (diffMin < 60) {
+        return `Il y a ${diffMin}min`;
+      }
+      // Si moins de 24 heures
+      if (diffHour < 24) {
+        return `Il y a ${diffHour}h`;
+      }
+      // Si moins de 7 jours
+      if (diffDay < 7) {
+        return `Il y a ${diffDay}j`;
+      }
+      // Sinon, afficher la date complète
+      return date.toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return timestamp;
+    }
   }
 }
 
