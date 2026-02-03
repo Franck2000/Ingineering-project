@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, User, Moon, Sun, LogOut, RefreshCw } from 'lucide-react';
+import { ChevronDown, User, Moon, Sun, LogOut, RefreshCw, Pause, Play } from 'lucide-react';
 import logo from '../assets/logo.png';
 
 /**
  * Composant Header - Affiche le titre et les actions du dashboard
  * Thème Cyber Security - Unicorns
  */
-const Header = ({ onRefresh, darkMode, toggleDarkMode, onLogout, username, lastUpdate }) => {
+const Header = ({ onRefresh, darkMode, toggleDarkMode, onLogout, username, lastUpdate, isLive, onToggleLive, newAlertsCount }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [timeSinceUpdate, setTimeSinceUpdate] = useState('');
@@ -52,11 +52,31 @@ const Header = ({ onRefresh, darkMode, toggleDarkMode, onLogout, username, lastU
             Unicorns Security
           </h1>
         </div>
-        {/* Indicateur temps réel */}
-        <div className="live-indicator">
-          <div className="live-dot"></div>
-          <span className="text-xs font-medium text-green-400">LIVE</span>
-        </div>
+        {/* Indicateur temps réel avec bouton Pause/Play */}
+        <button 
+          onClick={onToggleLive}
+          className={`live-indicator cursor-pointer hover:scale-105 transition-transform ${!isLive ? 'opacity-60' : ''}`}
+          title={isLive ? 'Pause le live pour consulter les logs' : 'Reprendre le live'}
+        >
+          {isLive ? (
+            <>
+              <div className="live-dot"></div>
+              <span className="text-xs font-medium text-green-400">LIVE</span>
+              <Pause size={14} className="ml-1 text-green-400" />
+            </>
+          ) : (
+            <>
+              <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+              <span className="text-xs font-medium text-yellow-400">PAUSE</span>
+              <Play size={14} className="ml-1 text-yellow-400" />
+              {newAlertsCount > 0 && (
+                <span className="ml-2 px-1.5 py-0.5 text-xs font-bold bg-red-500 text-white rounded-full">
+                  +{newAlertsCount}
+                </span>
+              )}
+            </>
+          )}
+        </button>
       </div>
       
       <div className="flex gap-3 items-center">

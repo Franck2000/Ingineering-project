@@ -121,8 +121,8 @@ export const CACHE_CONFIG = {
 // ============================================
 
 export const POLLING_CONFIG = {
-  ALERTS_INTERVAL: 5000,  // Rafraîchir les alertes toutes les 5 secondes
-  STATS_INTERVAL: 10000,  // Rafraîchir les stats toutes les 10 secondes
+  ALERTS_INTERVAL: 3000,  // 3 secondes pour le live
+  STATS_INTERVAL: 3000,   // 3 secondes pour les stats
 };
 
 // ============================================
