@@ -72,9 +72,8 @@ export const CLOUD_PROVIDERS = {
   }
 };
 
-// Liste simplifiée pour l'UI
+// Liste pour l'UI (inclut Wazuh)
 export const CLOUD_PROVIDERS_LIST = Object.values(CLOUD_PROVIDERS)
-  .filter(p => p.name !== 'Wazuh')
   .map(({ name, color, icon }) => ({ name, color, icon }));
 
 // ============================================
@@ -143,16 +142,29 @@ export function mapRuleLevelToSeverity(level) {
 
 /**
  * Détecte le provider cloud depuis une alerte Wazuh
- * Utilise les tags officiels Wazuh pour la corrélation
+ * Priorité: 1. agent.labels.source  2. agent.name  3. rule.groups
  */
 export function detectCloudProvider(alert) {
-  // Récupérer tous les tags/groupes de l'alerte
+  // 1. Vérifier agent.labels.source (prioritaire)
+  const labelSource = alert.agent?.labels?.source?.toLowerCase() || '';
+  if (labelSource) {
+    if (labelSource.includes('aws') || labelSource.includes('amazon')) return 'AWS';
+    if (labelSource.includes('azure') || labelSource.includes('microsoft')) return 'Azure';
+    if (labelSource.includes('gcp') || labelSource.includes('google')) return 'GCP';
+  }
+  
+  // 2. Vérifier le nom de l'agent
+  const agentName = alert.agent?.name?.toLowerCase() || '';
+  if (agentName.includes('aws') || agentName.includes('amazon')) return 'AWS';
+  if (agentName.includes('azure')) return 'Azure';
+  if (agentName.includes('gcp') || agentName.includes('google')) return 'GCP';
+  
+  // 3. Fallback: vérifier rule.groups
   const alertTags = [
     ...(alert.rule?.groups || []),
     alert.decoder?.name || '',
   ].map(t => t.toLowerCase());
   
-  // Chercher une correspondance avec les providers
   for (const [key, provider] of Object.entries(CLOUD_PROVIDERS)) {
     if (key === 'WAZUH') continue;
     

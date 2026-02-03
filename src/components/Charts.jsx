@@ -96,9 +96,19 @@ const Charts = ({ timeSeriesData, providerDistribution }) => {
               tickFormatter={(value) => `${value / 1000}K`}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="Azure" stackId="a" fill={CYBER_COLORS.violet} radius={[0, 0, 0, 0]} />
-            <Bar dataKey="AWS" stackId="a" fill={CYBER_COLORS.pink} radius={[0, 0, 0, 0]} />
-            <Bar dataKey="GCP" stackId="a" fill={CYBER_COLORS.purple} radius={[4, 4, 0, 0]} />
+            <Legend 
+              verticalAlign="top" 
+              height={36}
+              formatter={(value) => (
+                <span style={{ color: '#e9d5ff', fontSize: '0.85rem', fontWeight: '600' }}>
+                  {value}
+                </span>
+              )}
+            />
+            <Bar dataKey="AWS" stackId="a" fill="#10B981" radius={[0, 0, 0, 0]} />
+            <Bar dataKey="Azure" stackId="a" fill="#3B82F6" radius={[0, 0, 0, 0]} />
+            <Bar dataKey="GCP" stackId="a" fill="#EF4444" radius={[0, 0, 0, 0]} />
+            <Bar dataKey="Wazuh" stackId="a" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

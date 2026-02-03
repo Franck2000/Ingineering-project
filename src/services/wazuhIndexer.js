@@ -97,6 +97,143 @@ class WazuhIndexerService {
   }
 
   /**
+   * Récupère la distribution par cloud provider
+   * Utilise agent.labels.source (gcp, aws, azure) ou fallback sur le nom d'agent
+   */
+  async getAlertsByCloudProvider() {
+    // 1. Agréger par agent.labels.source
+    const labelResponse = await this.#aggregate({
+      sources: { terms: { field: 'agent.labels.source', size: 20 } }
+    });
+    
+    const results = {};
+    const labelBuckets = labelResponse.sources?.buckets || [];
+    let labeledCount = 0;
+    
+    // Compter les alertes avec labels
+    for (const bucket of labelBuckets) {
+      const source = bucket.key.toLowerCase();
+      let provider = 'Wazuh';
+      
+      if (source.includes('aws') || source.includes('amazon')) provider = 'AWS';
+      else if (source.includes('azure') || source.includes('microsoft')) provider = 'Azure';
+      else if (source.includes('gcp') || source.includes('google')) provider = 'GCP';
+      else provider = bucket.key; // Utiliser le label tel quel
+      
+      results[provider] = (results[provider] || 0) + bucket.doc_count;
+      labeledCount += bucket.doc_count;
+    }
+
+    // 2. Agréger par nom d'agent pour détecter les patterns cloud
+    const agentResponse = await this.#aggregate({
+      agents: { terms: { field: 'agent.name', size: 50 } }
+    });
+    
+    const agentBuckets = agentResponse.agents?.buckets || [];
+    let wazuhCount = 0;
+    
+    for (const bucket of agentBuckets) {
+      const agentName = bucket.key.toLowerCase();
+      let provider = null;
+      
+      if (agentName.includes('aws') || agentName.includes('amazon')) provider = 'AWS';
+      else if (agentName.includes('azure')) provider = 'Azure';
+      else if (agentName.includes('gcp') || agentName.includes('google')) provider = 'GCP';
+      
+      if (provider) {
+        results[provider] = (results[provider] || 0) + bucket.doc_count;
+      } else {
+        wazuhCount += bucket.doc_count;
+      }
+    }
+    
+    // Ajouter les alertes locales (Wazuh)
+    if (wazuhCount > 0) {
+      // Éviter de compter deux fois les alertes avec labels
+      results['Wazuh'] = Math.max(0, wazuhCount - labeledCount);
+    }
+
+    return results;
+  }
+
+  /**
+   * Récupère la timeline par cloud provider
+   * Utilise agent.labels.source et agent.name pour la classification
+   */
+  async getTimelineByCloudProvider(hours = 24) {
+    const query = {
+      size: 0,
+      query: {
+        range: { timestamp: { gte: `now-${hours}h`, lte: 'now' } }
+      },
+      aggs: {
+        timeline: {
+          date_histogram: { field: 'timestamp', fixed_interval: '1h' },
+          aggs: {
+            by_source: { terms: { field: 'agent.labels.source', size: 20 } },
+            by_agent: { terms: { field: 'agent.name', size: 30 } }
+          }
+        }
+      }
+    };
+
+    const response = await this.#request(`/${indices.alerts}/_search`, {
+      method: 'POST',
+      body: JSON.stringify(query)
+    });
+
+    const buckets = response.aggregations?.timeline?.buckets || [];
+    
+    return buckets.map(bucket => {
+      const result = {
+        time: bucket.key_as_string || bucket.key,
+        AWS: 0,
+        Azure: 0,
+        GCP: 0,
+        Wazuh: 0
+      };
+
+      // Compter par agent.labels.source
+      const sources = bucket.by_source?.buckets || [];
+      let labeledCount = 0;
+      
+      for (const src of sources) {
+        const source = src.key.toLowerCase();
+        if (source.includes('aws') || source.includes('amazon')) {
+          result.AWS += src.doc_count;
+        } else if (source.includes('azure')) {
+          result.Azure += src.doc_count;
+        } else if (source.includes('gcp') || source.includes('google')) {
+          result.GCP += src.doc_count;
+        }
+        labeledCount += src.doc_count;
+      }
+
+      // Compter par nom d'agent
+      const agents = bucket.by_agent?.buckets || [];
+      let totalFromAgents = 0;
+      
+      for (const agent of agents) {
+        const name = agent.key.toLowerCase();
+        if (name.includes('aws') || name.includes('amazon')) {
+          result.AWS += agent.doc_count;
+        } else if (name.includes('azure')) {
+          result.Azure += agent.doc_count;
+        } else if (name.includes('gcp') || name.includes('google')) {
+          result.GCP += agent.doc_count;
+        } else {
+          totalFromAgents += agent.doc_count;
+        }
+      }
+      
+      // Wazuh = alertes locales (sans labels cloud)
+      result.Wazuh = Math.max(0, totalFromAgents - labeledCount);
+
+      return result;
+    });
+  }
+
+  /**
    * Récupère l'historique des alertes par heure
    */
   async getAlertsTimeline(hours = 24) {

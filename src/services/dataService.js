@@ -89,7 +89,7 @@ class DataService {
   }
 
   /**
-   * Récupère les données temporelles
+   * Récupère les données temporelles par cloud provider
    */
   async getTimeSeriesData() {
     if (!wazuhAuth.isAuthenticated()) {
@@ -97,44 +97,70 @@ class DataService {
     }
 
     try {
-      const timeline = await wazuhIndexer.getAlertsTimeline(24);
+      const timeline = await wazuhIndexer.getTimelineByCloudProvider(24);
       
       return timeline.map(bucket => ({
-        time: new Date(bucket.key_as_string || bucket.key).toLocaleTimeString('fr-FR', { 
+        time: new Date(bucket.time).toLocaleTimeString('fr-FR', { 
           hour: '2-digit', 
           minute: '2-digit' 
         }),
-        Wazuh: bucket.doc_count || 0,
-        AWS: 0,
-        Azure: 0,
-        GCP: 0
+        AWS: bucket.AWS || 0,
+        Azure: bucket.Azure || 0,
+        GCP: bucket.GCP || 0,
+        Wazuh: bucket.Wazuh || 0
       }));
     } catch (error) {
       console.error('Erreur timeline:', error);
-      return [];
+      // Fallback sur timeline simple
+      try {
+        const timeline = await wazuhIndexer.getAlertsTimeline(24);
+        return timeline.map(bucket => ({
+          time: new Date(bucket.key_as_string || bucket.key).toLocaleTimeString('fr-FR', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          }),
+          AWS: 0,
+          Azure: 0,
+          GCP: 0,
+          Wazuh: bucket.doc_count || 0
+        }));
+      } catch {
+        return [];
+      }
     }
   }
 
   /**
-   * Récupère la distribution des providers
+   * Récupère la distribution des cloud providers
+   * AWS, Azure, GCP, Wazuh (local)
    */
   async getProviderDistribution() {
     if (!wazuhAuth.isAuthenticated()) {
       return [];
     }
 
-    const alerts = await this.getAlerts();
-    const distribution = alerts.reduce((acc, alert) => {
-      const provider = alert.provider || 'Wazuh';
-      acc[provider] = (acc[provider] || 0) + 1;
-      return acc;
-    }, {});
+    const providerColors = {
+      AWS: '#10B981',     // Vert
+      Azure: '#3B82F6',   // Bleu
+      GCP: '#EF4444',     // Rouge
+      Wazuh: '#8B5CF6'    // Violet
+    };
 
-    return Object.entries(distribution).map(([name, value]) => ({
-      name,
-      value,
-      color: CLOUD_PROVIDERS[name.toUpperCase()]?.color || '#6B7280'
-    }));
+    try {
+      const distribution = await wazuhIndexer.getAlertsByCloudProvider();
+      
+      return Object.entries(distribution)
+        .filter(([_, value]) => value > 0)
+        .map(([name, value]) => ({
+          name,
+          value,
+          color: providerColors[name] || '#6B7280'
+        }))
+        .sort((a, b) => b.value - a.value);
+    } catch (error) {
+      console.error('Erreur distribution providers:', error);
+      return [];
+    }
   }
 
   /**
