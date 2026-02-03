@@ -12,15 +12,24 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
+import { TrendingUp, PieChart as PieChartIcon } from 'lucide-react';
+
+// Couleurs du thème cyber
+const CYBER_COLORS = {
+  purple: '#8b5cf6',
+  pink: '#ec4899',
+  violet: '#7c3aed',
+  magenta: '#d946ef',
+  indigo: '#6366f1',
+  grid: 'rgba(139, 92, 246, 0.15)',
+  axis: '#a78bfa',
+};
 
 /**
  * Composant Charts - Affiche les graphiques
- * Suit le principe de responsabilité unique (Single Responsibility)
+ * Thème Cyber Security - Violet/Rose
  */
 const Charts = ({ timeSeriesData, providerDistribution }) => {
-  // Détecte si le mode sombre est actif
-  const isDarkMode = document.documentElement.classList.contains('dark');
-
   // Label personnalisé pour le donut chart
   const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
     const RADIAN = Math.PI / 180;
@@ -42,71 +51,94 @@ const Charts = ({ timeSeriesData, providerDistribution }) => {
     );
   };
 
+  // Custom tooltip style
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="backdrop-blur-md border border-primary-500/30 rounded-lg p-3" style={{backgroundColor: 'rgba(45, 31, 74, 0.95)', boxShadow: '0 0 30px rgba(139, 92, 246, 0.3)'}}>
+          <p className="text-primary-200 font-semibold mb-2">{label}</p>
+          {payload.map((entry, index) => (
+            <p key={index} className="text-sm" style={{ color: entry.color }}>
+              {entry.name}: <span className="font-bold">{entry.value.toLocaleString()}</span>
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="grid grid-cols-3 gap-6 mb-8">
       {/* Stacked Bar Chart */}
       <div className="col-span-2 card">
-        <div className="text-lg font-bold text-gray-900 dark:text-white mb-6">
-          Alerts Over Time
+        <div className="flex items-center gap-2 mb-6">
+          <TrendingUp size={20} className="text-primary-400" />
+          <span className="text-lg font-bold text-gradient">
+            Alerts Over Time
+          </span>
         </div>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={timeSeriesData}>
-            <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? '#374151' : '#E5E7EB'} vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={CYBER_COLORS.grid} vertical={false} />
             <XAxis
               dataKey="time"
-              stroke={isDarkMode ? '#9CA3AF' : '#9CA3AF'}
+              stroke={CYBER_COLORS.axis}
               style={{ fontSize: '0.85rem', fontWeight: '500' }}
-              axisLine={{ stroke: isDarkMode ? '#374151' : '#E5E7EB' }}
+              axisLine={{ stroke: CYBER_COLORS.grid }}
               tickLine={false}
             />
             <YAxis
-              stroke={isDarkMode ? '#9CA3AF' : '#9CA3AF'}
+              stroke={CYBER_COLORS.axis}
               style={{ fontSize: '0.85rem', fontWeight: '500' }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(value) => `${value / 1000}K`}
             />
-            <Tooltip
-              contentStyle={{
-                background: isDarkMode ? '#1F2937' : 'white',
-                border: `2px solid ${isDarkMode ? '#374151' : '#E5E7EB'}`,
-                borderRadius: '8px',
-                fontSize: '0.85rem',
-                color: isDarkMode ? '#F9FAFB' : '#111827'
-              }}
-            />
-            <Bar dataKey="Azure" stackId="a" fill="#3B82F6" radius={[0, 0, 0, 0]} />
-            <Bar dataKey="AWS" stackId="a" fill="#10B981" radius={[0, 0, 0, 0]} />
-            <Bar dataKey="GCP" stackId="a" fill="#EF4444" radius={[4, 4, 0, 0]} />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey="Azure" stackId="a" fill={CYBER_COLORS.violet} radius={[0, 0, 0, 0]} />
+            <Bar dataKey="AWS" stackId="a" fill={CYBER_COLORS.pink} radius={[0, 0, 0, 0]} />
+            <Bar dataKey="GCP" stackId="a" fill={CYBER_COLORS.purple} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
 
       {/* Donut Chart */}
       <div className="card">
-        <ResponsiveContainer width="100%" height={370}>
+        <div className="flex items-center gap-2 mb-4">
+          <PieChartIcon size={20} className="text-cyber-pink" />
+          <span className="text-lg font-bold text-gradient">
+            Distribution
+          </span>
+        </div>
+        <ResponsiveContainer width="100%" height={340}>
           <PieChart>
             <Pie
               data={providerDistribution}
               cx="50%"
               cy="45%"
-              innerRadius={80}
-              outerRadius={130}
-              paddingAngle={0}
+              innerRadius={70}
+              outerRadius={110}
+              paddingAngle={2}
               dataKey="value"
               label={renderCustomLabel}
               labelLine={false}
+              stroke="rgba(30, 16, 51, 0.5)"
+              strokeWidth={2}
             >
               {providerDistribution.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
+                <Cell 
+                  key={`cell-${index}`} 
+                  fill={entry.color || [CYBER_COLORS.purple, CYBER_COLORS.pink, CYBER_COLORS.violet][index % 3]} 
+                />
               ))}
             </Pie>
             <Legend
               verticalAlign="bottom"
               height={36}
-              iconType="square"
+              iconType="circle"
               formatter={(value) => (
-                <span style={{ color: isDarkMode ? '#E5E7EB' : '#374151', fontSize: '0.9rem', fontWeight: '600' }}>
+                <span style={{ color: '#e9d5ff', fontSize: '0.9rem', fontWeight: '600' }}>
                   {value}
                 </span>
               )}

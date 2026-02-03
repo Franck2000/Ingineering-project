@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, User, Moon, Sun, LogOut, RefreshCw, Radio } from 'lucide-react';
+import { ChevronDown, User, Moon, Sun, LogOut, RefreshCw } from 'lucide-react';
+import logo from '../assets/logo.png';
 
 /**
  * Composant Header - Affiche le titre et les actions du dashboard
- * Suit le principe de responsabilité unique (Single Responsibility)
+ * Thème Cyber Security - Unicorns
  */
 const Header = ({ onRefresh, darkMode, toggleDarkMode, onLogout, username, lastUpdate }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -44,20 +45,24 @@ const Header = ({ onRefresh, darkMode, toggleDarkMode, onLogout, username, lastU
   return (
     <div className="flex justify-between items-center mb-8">
       <div className="flex items-center gap-4">
-        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white transition-colors">
-          Cloud Security Monitoring Dashboard
-        </h1>
+        {/* Logo Unicorns */}
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="Unicorns" className="w-12 h-12 object-contain drop-shadow-lg" style={{filter: 'drop-shadow(0 4px 20px rgba(59, 130, 246, 0.5))'}} />
+          <h1 className="text-2xl font-extrabold text-gradient">
+            Unicorns Security
+          </h1>
+        </div>
         {/* Indicateur temps réel */}
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-full">
-          <Radio size={14} className="text-green-600 dark:text-green-400 animate-pulse" />
-          <span className="text-xs font-medium text-green-700 dark:text-green-400">LIVE</span>
+        <div className="live-indicator">
+          <div className="live-dot"></div>
+          <span className="text-xs font-medium text-green-400">LIVE</span>
         </div>
       </div>
       
       <div className="flex gap-3 items-center">
         {/* Affichage de la dernière mise à jour */}
         {lastUpdate && (
-          <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 rounded-lg">
+          <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 bg-surface-secondary/60 backdrop-blur-sm border border-primary-500/20 rounded-lg">
             <span>Mis à jour {timeSinceUpdate}</span>
           </div>
         )}
@@ -72,16 +77,16 @@ const Header = ({ onRefresh, darkMode, toggleDarkMode, onLogout, username, lastU
         </button>
         <button className="btn-secondary">Save View</button>
         
-        {/* Dark Mode Toggle */}
+        {/* Dark Mode Toggle - Style cyber */}
         <button
           onClick={toggleDarkMode}
-          className="w-10 h-10 flex items-center justify-center bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          className="w-10 h-10 flex items-center justify-center bg-surface-secondary/80 border border-primary-500/30 rounded-lg cursor-pointer hover:bg-surface-tertiary hover:border-primary-400/50 transition-all backdrop-blur-sm"
           title={darkMode ? 'Mode clair' : 'Mode sombre'}
         >
           {darkMode ? (
-            <Sun size={20} className="text-yellow-500" />
+            <Sun size={20} className="text-yellow-400" />
           ) : (
-            <Moon size={20} className="text-gray-600" />
+            <Moon size={20} className="text-primary-300" />
           )}
         </button>
         
@@ -89,29 +94,29 @@ const Header = ({ onRefresh, darkMode, toggleDarkMode, onLogout, username, lastU
         <div className="relative">
           <div 
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-surface-secondary/80 border border-primary-500/30 rounded-lg cursor-pointer hover:bg-surface-tertiary hover:border-primary-400/50 transition-all backdrop-blur-sm"
           >
-            <div className="w-8 h-8 bg-gray-200 dark:bg-gray-600 rounded-full flex items-center justify-center">
-              <User size={18} className="text-gray-600 dark:text-gray-300" />
+            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{background: 'linear-gradient(to bottom right, #a855f7, #ec4899)'}}>
+              <User size={18} className="text-white" />
             </div>
             <div className="flex flex-col items-start">
-              <div className="text-sm font-semibold text-gray-900 dark:text-white">
+              <div className="text-sm font-semibold text-white">
                 {username || 'Admin'}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">Administrator</div>
+              <div className="text-xs text-gray-400">Administrator</div>
             </div>
-            <ChevronDown size={16} className={`text-gray-600 dark:text-gray-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+            <ChevronDown size={16} className={`text-gray-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
           </div>
 
           {/* Dropdown Menu */}
           {showUserMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+            <div className="absolute right-0 mt-2 w-48 backdrop-blur-md border border-primary-500/30 rounded-lg z-50" style={{backgroundColor: 'rgba(45, 31, 74, 0.95)', boxShadow: '0 0 30px rgba(139, 92, 246, 0.3)'}}>
               <button
                 onClick={() => {
                   setShowUserMenu(false);
                   onLogout();
                 }}
-                className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-lg transition-colors"
               >
                 <LogOut size={18} />
                 <span>Déconnexion</span>

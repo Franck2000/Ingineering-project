@@ -30,11 +30,11 @@ function App() {
   });
 
   // État local pour les données
-  const [alerts, setAlerts] = useState([]);
   const [filteredAlerts, setFilteredAlerts] = useState([]);
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [availableSources, setAvailableSources] = useState([]);
 
-  // Gestion des filtres avec le hook personnalisé - SANS FILTRES INITIAUX
+  // Gestion des filtres
   const {
     filters,
     toggleProvider,
@@ -44,15 +44,7 @@ function App() {
     setRegion,
     setSource,
     clearFilters
-  } = useFilters({
-    providers: [],  // Vide par défaut
-    service: '',    // Vide par défaut
-    region: '',     // Vide par défaut
-    source: ''      // Vide par défaut
-  });
-
-  // Sources disponibles extraites des alertes
-  const [availableSources, setAvailableSources] = useState([]);
+  } = useFilters();
 
   // Chargement des données avec les hooks personnalisés
   const { data: statistics, refetch: refetchStats } = useDataFetch(
@@ -107,11 +99,10 @@ function App() {
     const loadAlerts = async () => {
       try {
         const data = await dataService.getAlerts();
-        setAlerts(data);
         setFilteredAlerts(data);
         setLastUpdate(new Date());
         
-        // Extraire les sources uniques des alertes (agent.name ou environment)
+        // Extraire les sources uniques des alertes
         const sources = [...new Set(data.map(alert => alert.environment).filter(Boolean))];
         setAvailableSources(sources.sort());
       } catch (error) {
@@ -161,9 +152,8 @@ function App() {
 
   // Handler pour le refresh manuel
   const handleRefresh = async () => {
-    dataService.invalidateCache(); // Invalider le cache pour forcer le refresh
+    dataService.invalidateCache();
     const data = await dataService.getAlerts();
-    setAlerts(data);
     setFilteredAlerts(data);
     setLastUpdate(new Date());
     refetchStats();
@@ -175,7 +165,12 @@ function App() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="flex min-h-screen transition-colors duration-300 relative overflow-hidden" style={{background: 'linear-gradient(135deg, #1a0a2e 0%, #2d1f4a 50%, #1e1033 100%)'}}>
+      {/* Decorative orbs */}
+      <div className="cyber-orb w-96 h-96 -top-48 -right-48 opacity-40"></div>
+      <div className="cyber-orb-pink w-80 h-80 bottom-20 left-1/4 opacity-30"></div>
+      <div className="cyber-orb w-64 h-64 top-1/3 right-1/4 opacity-20"></div>
+      
       {/* Sidebar */}
       <Sidebar
         filters={filters}
@@ -190,7 +185,7 @@ function App() {
       />
 
       {/* Main Content */}
-      <div className="flex-1 p-8 overflow-y-auto">
+      <div className="flex-1 p-8 overflow-y-auto relative z-10">
         {/* Header */}
         <Header 
           onRefresh={handleRefresh} 

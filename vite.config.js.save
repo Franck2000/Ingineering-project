@@ -9,6 +9,7 @@ import react from '@vitejs/plugin-react'
  * Le proxy Vite agit comme intermédiaire : le navigateur communique avec localhost,
  * et Vite relaie les requêtes vers les serveurs Wazuh.
  */
+const PUBLIC_IP = '51.44.183.21'
 
 // Configuration des serveurs Wazuh
 const WAZUH_SERVERS = {
@@ -18,10 +19,12 @@ const WAZUH_SERVERS = {
 
 export default defineConfig({
   plugins: [react()],
+  
   server: {
     port:3000,
     host :'0.0.0.0',
     open: true,
+    
     proxy: {
       // Proxy vers l'API Wazuh Manager
       '/api/wazuh': {

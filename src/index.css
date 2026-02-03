@@ -6,66 +6,127 @@
 
 @layer base {
   body {
-    @apply font-sans antialiased bg-gray-50 dark:bg-gray-900 transition-colors duration-300;
+    @apply font-sans antialiased text-white transition-colors duration-300;
+    background-color: #0f0518;
   }
 }
 
 @layer components {
+  /* ===== BUTTONS ===== */
   .btn-primary {
-    @apply px-5 py-2.5 bg-primary-500 text-white rounded-lg font-semibold text-sm 
-           hover:bg-primary-600 transition-colors duration-200 border-2 border-transparent;
+    @apply px-5 py-2.5 rounded-lg font-semibold text-sm text-white
+           transition-all duration-300
+           border border-primary-400/30;
+    background: linear-gradient(to right, #9333ea, #a855f7, #8b5cf6);
+    box-shadow: 0 4px 20px rgba(147, 51, 234, 0.4);
+  }
+  
+  .btn-primary:hover {
+    background: linear-gradient(to right, #a855f7, #c084fc, #8b5cf6);
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
   }
   
   .btn-secondary {
-    @apply px-5 py-2.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg font-semibold text-sm 
-           border-2 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors duration-200;
+    @apply px-5 py-2.5 rounded-lg font-semibold text-sm 
+           text-gray-200 
+           border border-primary-500/30 
+           hover:border-primary-400/50 
+           hover:text-white backdrop-blur-sm
+           transition-all duration-300;
+    background-color: rgba(45, 31, 74, 0.8);
   }
   
+  .btn-secondary:hover {
+    background-color: #3d2a5f;
+  }
+  
+  /* ===== CARDS ===== */
   .card {
-    @apply bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-6 transition-colors duration-300;
+    @apply backdrop-blur-md rounded-xl p-6 
+           border border-primary-500/20 
+           hover:border-primary-400/40
+           transition-all duration-300;
+    background: linear-gradient(135deg, rgba(45, 31, 74, 0.9) 0%, rgba(30, 16, 51, 0.9) 100%);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 20px rgba(139, 92, 246, 0.1);
+  }
+
+  .card-glow {
+    @apply card;
   }
   
+  .card-glow:hover {
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
+  }
+  
+  /* ===== INPUTS ===== */
   .input-field {
-    @apply w-full px-3 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-200
-           bg-gray-50 dark:bg-gray-700 font-medium focus:outline-none focus:border-primary-500 
-           focus:bg-white dark:focus:bg-gray-600 transition-colors duration-200;
+    @apply w-full px-3 py-2.5 rounded-lg text-sm text-gray-200
+           border border-primary-500/30
+           font-medium focus:outline-none focus:border-primary-400 
+           focus:ring-2 focus:ring-primary-500/20
+           placeholder-gray-500 backdrop-blur-sm
+           transition-all duration-200;
+    background-color: rgba(45, 31, 74, 0.6);
   }
   
+  .input-field:focus {
+    background-color: rgba(61, 42, 95, 0.6);
+  }
+  
+  /* ===== CHECKBOXES & RADIOS ===== */
   .checkbox-custom {
-    @apply w-[18px] h-[18px] border-2 border-gray-300 dark:border-gray-500 rounded flex items-center justify-center 
-           flex-shrink-0 transition-all duration-200;
+    @apply w-[18px] h-[18px] border-2 border-primary-400/50 rounded 
+           flex items-center justify-center flex-shrink-0 
+           transition-all duration-200;
+    background-color: rgba(45, 31, 74, 0.5);
   }
   
   .checkbox-custom.checked {
-    @apply bg-primary-500 border-primary-500;
+    @apply border-primary-400;
+    background: linear-gradient(to right, #a855f7, #ec4899);
   }
   
   .radio-custom {
-    @apply w-[18px] h-[18px] border-2 border-gray-300 dark:border-gray-500 rounded-full flex items-center justify-center 
-           flex-shrink-0 transition-all duration-200;
+    @apply w-[18px] h-[18px] border-2 border-primary-400/50 rounded-full 
+           flex items-center justify-center flex-shrink-0 
+           transition-all duration-200;
+    background-color: rgba(45, 31, 74, 0.5);
   }
   
   .radio-custom.selected {
-    @apply border-primary-500;
+    @apply border-primary-400;
+  }
+
+  /* ===== DECORATIVE ELEMENTS ===== */
+  .cyber-orb {
+    @apply absolute rounded-full opacity-60 blur-3xl pointer-events-none;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, rgba(236, 72, 153, 0.2) 50%, transparent 70%);
+    animation: float 8s ease-in-out infinite;
+  }
+
+  .cyber-orb-pink {
+    @apply absolute rounded-full opacity-50 blur-3xl pointer-events-none;
+    background: radial-gradient(circle, rgba(236, 72, 153, 0.3) 0%, rgba(217, 70, 239, 0.2) 50%, transparent 70%);
+    animation: float 10s ease-in-out infinite reverse;
   }
 
   /* ===== LOGIN PAGE STYLES ===== */
   .login-container {
     @apply min-h-screen w-full flex items-center justify-center relative overflow-hidden;
+    background: linear-gradient(135deg, #0f0518 0%, #1a0a2e 30%, #2d1f4a 70%, #1e1033 100%);
   }
 
   .login-background {
     @apply absolute inset-0;
-    background: linear-gradient(135deg, #fce7f3 0%, #e9d5ff 50%, #c7d2fe 100%);
   }
 
   .login-grid {
-    @apply absolute inset-0;
+    @apply absolute inset-0 opacity-20;
     background-image: 
-      linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px);
-    background-size: 50px 50px;
-    mask-image: radial-gradient(ellipse 80% 50% at 50% 50%, black 40%, transparent 100%);
+      linear-gradient(rgba(139, 92, 246, 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139, 92, 246, 0.3) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 20%, transparent 100%);
   }
 
   .login-content {
@@ -73,13 +134,16 @@
   }
 
   .login-badge {
-    @apply px-4 py-1.5 bg-amber-100 text-amber-800 rounded-full text-sm font-semibold mb-6;
+    @apply px-4 py-1.5 rounded-full text-sm font-semibold mb-6
+           text-primary-300 border border-primary-400/30;
+    background: linear-gradient(to right, rgba(168, 85, 247, 0.2), rgba(236, 72, 153, 0.2));
   }
 
   .login-title {
-    @apply text-4xl font-bold text-gray-900 mb-8 text-center;
-    font-family: 'Georgia', serif;
-    font-style: italic;
+    @apply text-4xl font-bold mb-8 text-center bg-clip-text text-transparent;
+    background-image: linear-gradient(to right, #ffffff, #e9d5ff, #ec4899);
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
   }
 
   .login-form {
@@ -91,13 +155,15 @@
   }
 
   .login-label {
-    @apply text-sm font-medium text-gray-700;
+    @apply text-sm font-medium text-gray-300;
   }
 
   .login-input {
-    @apply w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800
-           focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-transparent
-           placeholder-gray-400 transition-all duration-200;
+    @apply w-full px-4 py-3 rounded-xl text-gray-100
+           border border-primary-500/30
+           focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-400
+           placeholder-gray-500 backdrop-blur-sm transition-all duration-200;
+    background-color: rgba(45, 31, 74, 0.7);
   }
 
   .login-options {
@@ -105,21 +171,30 @@
   }
 
   .login-checkbox-label {
-    @apply flex items-center gap-2 cursor-pointer text-sm text-gray-600;
+    @apply flex items-center gap-2 cursor-pointer text-sm text-gray-400;
   }
 
   .login-checkbox {
-    @apply w-4 h-4 rounded border-gray-300 text-purple-500 focus:ring-purple-300;
+    @apply w-4 h-4 rounded border-primary-400/50 text-primary-500 
+           focus:ring-primary-400/30;
+    background-color: #2d1f4a;
   }
 
   .login-forgot {
-    @apply text-sm text-gray-600 hover:text-purple-600 transition-colors;
+    @apply text-sm text-gray-400 hover:text-primary-300 transition-colors;
   }
 
   .login-button {
-    @apply w-full py-3.5 bg-gray-900 text-white rounded-xl font-semibold text-base
-           hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900
-           transition-all duration-200 flex items-center justify-center;
+    @apply w-full py-3.5 rounded-xl font-semibold text-base text-white
+           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500
+           transition-all duration-300 flex items-center justify-center;
+    background: linear-gradient(to right, #9333ea, #a855f7, #8b5cf6);
+    box-shadow: 0 4px 20px rgba(147, 51, 234, 0.4);
+  }
+  
+  .login-button:hover {
+    background: linear-gradient(to right, #a855f7, #c084fc, #ec4899);
+    box-shadow: 0 0 50px rgba(139, 92, 246, 0.4);
   }
 
   .login-button:disabled {
@@ -137,7 +212,7 @@
   .login-divider::before,
   .login-divider::after {
     content: '';
-    @apply flex-1 border-t border-gray-300;
+    @apply flex-1 border-t border-primary-500/30;
   }
 
   .login-divider span {
@@ -149,20 +224,109 @@
   }
 
   .login-error {
-    @apply flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm;
+    @apply flex items-center gap-2 px-4 py-3 rounded-xl text-sm
+           bg-red-500/10 border border-red-500/30 text-red-400;
+  }
+
+  /* ===== SEVERITY BADGES ===== */
+  .badge-critical {
+    @apply px-2.5 py-1 rounded text-xs font-bold
+           bg-red-500/20 text-red-400 border border-red-500/30;
+  }
+
+  .badge-high {
+    @apply px-2.5 py-1 rounded text-xs font-bold
+           bg-orange-500/20 text-orange-400 border border-orange-500/30;
+  }
+
+  .badge-medium {
+    @apply px-2.5 py-1 rounded text-xs font-bold
+           bg-yellow-500/20 text-yellow-400 border border-yellow-500/30;
+  }
+
+  .badge-low {
+    @apply px-2.5 py-1 rounded text-xs font-bold
+           bg-green-500/20 text-green-400 border border-green-500/30;
+  }
+
+  /* ===== LIVE INDICATOR ===== */
+  .live-indicator {
+    @apply flex items-center gap-2 px-3 py-1.5 rounded-full
+           bg-green-500/20 border border-green-500/40;
+  }
+
+  .live-dot {
+    @apply w-2 h-2 rounded-full bg-green-400 animate-pulse;
   }
 }
 
 @layer utilities {
+  /* ===== SURFACE BACKGROUNDS ===== */
+  .bg-surface-primary {
+    background-color: #1e1033;
+  }
+  .bg-surface-primary\/95 {
+    background-color: rgba(30, 16, 51, 0.95);
+  }
+  .bg-surface-secondary {
+    background-color: #2d1f4a;
+  }
+  .bg-surface-secondary\/50 {
+    background-color: rgba(45, 31, 74, 0.5);
+  }
+  .bg-surface-secondary\/60 {
+    background-color: rgba(45, 31, 74, 0.6);
+  }
+  .bg-surface-secondary\/80 {
+    background-color: rgba(45, 31, 74, 0.8);
+  }
+  .bg-surface-tertiary {
+    background-color: #3d2a5f;
+  }
+  .bg-surface-tertiary\/50 {
+    background-color: rgba(61, 42, 95, 0.5);
+  }
+  .bg-surface-tertiary\/60 {
+    background-color: rgba(61, 42, 95, 0.6);
+  }
+  .hover\:bg-surface-tertiary:hover {
+    background-color: #3d2a5f;
+  }
+  .hover\:bg-surface-tertiary\/60:hover {
+    background-color: rgba(61, 42, 95, 0.6);
+  }
+  .bg-surface-card {
+    background-color: rgba(45, 31, 74, 0.8);
+  }
+  .bg-surface-glass {
+    background-color: rgba(138, 92, 246, 0.1);
+  }
+
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
   }
   
   .scrollbar-thin::-webkit-scrollbar-track {
-    @apply bg-gray-100 dark:bg-gray-800 rounded-full;
+    background-color: #2d1f4a;
+    border-radius: 9999px;
   }
   
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 dark:bg-gray-600 rounded-full hover:bg-gray-400 dark:hover:bg-gray-500;
+    background-color: rgba(168, 85, 247, 0.4);
+    border-radius: 9999px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(192, 132, 252, 0.6);
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(to right, #d8b4fe, #8b5cf6, #ec4899);
+  }
+
+  .glass-effect {
+    @apply backdrop-blur-md border border-primary-500/20;
+    background-color: rgba(138, 92, 246, 0.1);
   }
 }

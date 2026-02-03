@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { wazuhAuth } from '../services/wazuhAuth';
+import { Lock, User, Eye, EyeOff } from 'lucide-react';
+import logo from '../assets/logo.png';
 
 /**
  * Composant de page de connexion
- * Style inspiré du design Otake avec gradient rose/violet
+ * Thème Cyber Security - Unicorns
  */
 function LoginPage({ onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -36,21 +39,33 @@ function LoginPage({ onLoginSuccess }) {
 
   return (
     <div className="login-container">
-      {/* Fond avec gradient */}
+      {/* Fond avec gradient et effets */}
       <div className="login-background">
         <div className="login-grid"></div>
+        {/* Orbes décoratives */}
+        <div className="cyber-orb w-96 h-96 -top-20 -left-20"></div>
+        <div className="cyber-orb-pink w-80 h-80 bottom-10 right-10"></div>
+        <div className="cyber-orb w-64 h-64 top-1/2 right-1/4"></div>
       </div>
 
       {/* Contenu de la page */}
       <div className="login-content">
+        {/* Logo Unicorns */}
+        <img 
+          src={logo} 
+          alt="Unicorns" 
+          className="w-32 h-32 mb-6 object-contain animate-float" 
+          style={{filter: 'drop-shadow(0 0 30px rgba(59, 130, 246, 0.6))'}} 
+        />
+
         {/* Badge */}
         <div className="login-badge">
-          Wazuh SIEM
+          🦄 Unicorns SIEM
         </div>
 
         {/* Titre */}
         <h1 className="login-title">
-          Welcome to SIEM Dashboard!
+          Unicorns Security Dashboard
         </h1>
 
         {/* Formulaire */}
@@ -70,16 +85,19 @@ function LoginPage({ onLoginSuccess }) {
             <label htmlFor="email" className="login-label">
               Email / Username
             </label>
-            <input
-              type="text"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="login-input"
-              placeholder="admin@wazuh.local"
-              required
-              autoComplete="username"
-            />
+            <div className="relative">
+              <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-400/60" />
+              <input
+                type="text"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="login-input pl-11"
+                placeholder="admin@wazuh.local"
+                required
+                autoComplete="username"
+              />
+            </div>
           </div>
 
           {/* Champ Password */}
@@ -87,16 +105,26 @@ function LoginPage({ onLoginSuccess }) {
             <label htmlFor="password" className="login-label">
               Password
             </label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="login-input"
-              placeholder="••••••••"
-              required
-              autoComplete="current-password"
-            />
+            <div className="relative">
+              <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-400/60" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="login-input pl-11 pr-11"
+                placeholder="••••••••"
+                required
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-primary-400/60 hover:text-primary-300 transition-colors"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           {/* Remember me & Forgot password */}
@@ -137,12 +165,12 @@ function LoginPage({ onLoginSuccess }) {
 
         {/* Divider */}
         <div className="login-divider">
-          <span>or</span>
+          <span>Secure Connection</span>
         </div>
 
         {/* Info supplémentaire */}
         <p className="login-info">
-          Connect to your Wazuh SIEM server to access the dashboard
+          🔒 Connect to your Wazuh SIEM server with encrypted credentials
         </p>
       </div>
     </div>

@@ -88,12 +88,10 @@ export const SEVERITY_CONFIG = {
   Low:      { min: 0,  color: '#10B981' },
 };
 
-export const SEVERITY_COLORS = {
-  Critical: '#DC2626',
-  High: '#F59E0B',
-  Medium: '#3B82F6',
-  Low: '#10B981',
-};
+// Dérivé de SEVERITY_CONFIG (DRY)
+export const SEVERITY_COLORS = Object.fromEntries(
+  Object.entries(SEVERITY_CONFIG).map(([key, { color }]) => [key, color])
+);
 
 export const STATUS_COLORS = {
   New: '#DC2626',
