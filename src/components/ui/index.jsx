@@ -66,12 +66,28 @@ export const SeverityBadge = ({ severity }) => {
 };
 
 // Badge de statut
-export const StatusBadge = ({ status, config }) => (
-  <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${config.bg}`}>
-    <span className={`w-2 h-2 rounded-full ${config.dot}`} />
-    <span className={`text-sm font-medium ${config.color} capitalize`}>{status}</span>
-  </span>
-);
+export const StatusBadge = ({ status, config, label }) => {
+  // Configuration par défaut basée sur le status
+  const defaultConfigs = {
+    active: { bg: 'bg-green-500/20', dot: 'bg-green-500', color: 'text-green-400' },
+    inactive: { bg: 'bg-gray-500/20', dot: 'bg-gray-500', color: 'text-gray-400' },
+    warning: { bg: 'bg-yellow-500/20', dot: 'bg-yellow-500', color: 'text-yellow-400' },
+    error: { bg: 'bg-red-500/20', dot: 'bg-red-500', color: 'text-red-400' },
+    disconnected: { bg: 'bg-red-500/20', dot: 'bg-red-500', color: 'text-red-400' },
+    never_connected: { bg: 'bg-gray-500/20', dot: 'bg-gray-500', color: 'text-gray-400' },
+    pending: { bg: 'bg-yellow-500/20', dot: 'bg-yellow-500', color: 'text-yellow-400' }
+  };
+  
+  const cfg = config || defaultConfigs[status] || defaultConfigs.inactive;
+  const displayLabel = label || status;
+  
+  return (
+    <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${cfg.bg}`}>
+      <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+      <span className={`text-sm font-medium ${cfg.color} capitalize`}>{displayLabel}</span>
+    </span>
+  );
+};
 
 // Stat card avec icône
 export const StatCard = ({ icon: Icon, value, label, colorClass = 'text-primary-400' }) => (

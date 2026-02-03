@@ -1,13 +1,18 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import StatsCards from './components/StatsCards';
 import Charts from './components/Charts';
 import AlertsTable from './components/AlertsTable';
 import LoginPage from './components/LoginPage';
 import NewAlertsToast from './components/NewAlertsToast';
-import { AgentMonitoring } from './components/agents';
-import NavigationTabs from './components/NavigationTabs';
+import { AgentMonitoring, AgentDetails } from './components/agents';
+import MainNavigation, { PANEL_MODE } from './components/navigation/MainNavigation';
+import FilterPanel from './components/navigation/FilterPanel';
+import { ServerManagement } from './components/server';
+import { IndexerManagement } from './components/indexer';
+import { SecurityOperations } from './components/security-operations';
+import { ThreatIntelligence } from './components/threat-intelligence';
+import { EndpointSecurity } from './components/endpoint-security';
 import { useFilters } from './hooks/useFilters';
 import { usePagination } from './hooks/usePagination';
 import { useDataFetch } from './hooks/useDataFetch';
@@ -33,7 +38,10 @@ function App() {
   });
 
   // État pour la navigation entre les pages
-  const [activePage, setActivePage] = useState('dashboard');
+  const [activePage, setActivePage] = useState('overview');
+  const [activeSubPage, setActiveSubPage] = useState(null);
+  const [selectedAgentId, setSelectedAgentId] = useState(null);
+  const [panelMode, setPanelMode] = useState(PANEL_MODE.MENU);
 
   // État local pour les données
   const [filteredAlerts, setFilteredAlerts] = useState([]);
@@ -43,7 +51,6 @@ function App() {
   const [availableSources, setAvailableSources] = useState([]);
   const [isLive, setIsLive] = useState(true); // Mode live activé par défaut
   const [newAlertsCount, setNewAlertsCount] = useState(0); // Compteur d'alertes en attente
-  const [sidebarOpen, setSidebarOpen] = useState(false); // Sidebar mobile
   const [timeRange, setTimeRange] = useState({ type: 'relative', value: '24h', minutes: 1440, label: 'Last 24 hours' }); // Période temporelle
   const [advancedSearchActive, setAdvancedSearchActive] = useState(false); // Indique si des filtres de recherche avancée sont actifs
   
@@ -405,6 +412,13 @@ function App() {
     refetchServices();
   };
 
+  // Handler de navigation
+  const handleNavigate = (pageId, parentId = null) => {
+    setActivePage(pageId);
+    setActiveSubPage(parentId ? pageId : null);
+    setSelectedAgentId(null); // Reset agent selection on navigation
+  };
+
   // Si non authentifié, afficher la page de connexion
   if (!isAuthenticated) {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
@@ -434,27 +448,26 @@ function App() {
         </>
       )}
       
-      {/* Overlay mobile pour fermer la sidebar */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-      
-      {/* Sidebar */}
-      <Sidebar
-        filters={filters}
-        onToggleProvider={toggleProvider}
-        onServiceChange={setService}
-        onSeverityChange={setSeverity}
-        onEnvironmentChange={setEnvironment}
-        onRegionChange={setRegion}
-        onSourceChange={setSource}
-        onClearFilters={clearFilters}
-        availableSources={availableSources}
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
+      {/* Main Navigation Sidebar avec toggle Menu/Filtres */}
+      <MainNavigation
+        activePage={activePage}
+        activeSubPage={activeSubPage}
+        onNavigate={handleNavigate}
+        panelMode={panelMode}
+        onPanelModeChange={setPanelMode}
+        filtersComponent={
+          <FilterPanel
+            filters={filters}
+            onToggleProvider={toggleProvider}
+            onServiceChange={setService}
+            onSeverityChange={setSeverity}
+            onEnvironmentChange={setEnvironment}
+            onRegionChange={setRegion}
+            onSourceChange={setSource}
+            onClearFilters={clearFilters}
+            availableSources={availableSources}
+          />
+        }
       />
 
       {/* Main Content */}
@@ -470,19 +483,16 @@ function App() {
           isLive={isLive}
           onToggleLive={() => setIsLive(!isLive)}
           newAlertsCount={newAlertsCount}
-          onMenuClick={() => setSidebarOpen(true)}
+          onMenuClick={() => setPanelMode(panelMode === PANEL_MODE.MENU ? PANEL_MODE.FILTERS : PANEL_MODE.MENU)}
           timeRange={timeRange}
           onTimeRangeChange={setTimeRange}
         />
 
         {/* Navigation Tabs */}
-        <NavigationTabs 
-          activePage={activePage} 
-          onPageChange={setActivePage} 
-        />
+        {/* Navigation handled by MainNavigation sidebar */}
 
-        {/* Dashboard Page */}
-        {activePage === 'dashboard' && (
+        {/* Dashboard / Overview Page */}
+        {(activePage === 'overview' || activePage === 'home') && (
           <>
             {/* Stats Cards */}
             {computedStats && computedImpactedProviders && computedTopServices && (
@@ -512,8 +522,65 @@ function App() {
           </>
         )}
 
-        {/* Endpoints Page */}
-        {activePage === 'endpoints' && <AgentMonitoring />}
+        {/* Endpoints Page - Agent Monitoring */}
+        {activePage === 'endpoints' && !selectedAgentId && (
+          <AgentMonitoring onAgentSelect={(agentId) => setSelectedAgentId(agentId)} />
+        )}
+        
+        {/* Agent Details Page */}
+        {activePage === 'endpoints' && selectedAgentId && (
+          <AgentDetails 
+            agentId={selectedAgentId} 
+            onBack={() => setSelectedAgentId(null)} 
+          />
+        )}
+
+        {/* Explore Page */}
+        {activePage === 'explore' && (
+          <AlertsTable
+            alerts={filteredAlerts}
+            onSearchFiltersChange={(results, hasActiveFilters) => {
+              setSearchFilteredAlerts(results);
+              setAdvancedSearchActive(hasActiveFilters);
+            }}
+          />
+        )}
+
+        {/* Endpoint Security */}
+        {(activePage === 'configuration-assessment' || 
+          activePage === 'malware-detection' || 
+          activePage === 'fim') && (
+          <EndpointSecurity activePage={activePage} />
+        )}
+
+        {/* Threat Intelligence */}
+        {(activePage === 'threat-hunting' || 
+          activePage === 'vulnerability-detection' || 
+          activePage === 'mitre-attack') && (
+          <ThreatIntelligence activePage={activePage} />
+        )}
+
+        {/* Security Operations */}
+        {(activePage === 'security-events' || 
+          activePage === 'integrity-monitoring' || 
+          activePage === 'regulatory-compliance') && (
+          <SecurityOperations activePage={activePage} />
+        )}
+
+        {/* Server Management */}
+        {(activePage === 'server-status' || 
+          activePage === 'server-settings' || 
+          activePage === 'server-logs' ||
+          activePage === 'cluster' ||
+          activePage === 'statistics') && (
+          <ServerManagement activePage={activePage} />
+        )}
+
+        {/* Indexer Management */}
+        {(activePage === 'index-patterns' || 
+          activePage === 'index-management') && (
+          <IndexerManagement activePage={activePage} />
+        )}
       </div>
 
       {/* Toast notification pour les nouvelles alertes */}

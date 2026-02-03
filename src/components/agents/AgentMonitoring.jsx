@@ -4,17 +4,15 @@ import { useAgents } from '../../hooks/useAgents';
 import { formatChartData } from './agentUtils';
 import DonutChart from './DonutChart';
 import AgentTable from './AgentTable';
-import AgentDetails from './AgentDetails';
 import TablePagination from './TablePagination';
 import SearchBar from './SearchBar';
 
 /**
  * Composant AgentMonitoring
  * Affiche les statistiques et la liste des agents Wazuh
+ * @param {Function} onAgentSelect - Callback appelé lors de la sélection d'un agent
  */
-const AgentMonitoring = () => {
-  const [selectedAgentId, setSelectedAgentId] = useState(null);
-  
+const AgentMonitoring = ({ onAgentSelect }) => {
   const {
     agents,
     totalAgents,
@@ -34,15 +32,12 @@ const AgentMonitoring = () => {
   // Données formatées pour les graphiques
   const chartData = useMemo(() => formatChartData(stats), [stats]);
 
-  // Afficher les détails d'un agent
-  if (selectedAgentId) {
-    return (
-      <AgentDetails 
-        agentId={selectedAgentId} 
-        onBack={() => setSelectedAgentId(null)} 
-      />
-    );
-  }
+  // Handler pour sélectionner un agent
+  const handleAgentClick = (agentId) => {
+    if (onAgentSelect) {
+      onAgentSelect(agentId);
+    }
+  };
 
   // État de chargement
   if (loading) {
@@ -102,7 +97,7 @@ const AgentMonitoring = () => {
         />
 
         {/* Tableau */}
-        <AgentTable agents={agents} onAgentSelect={setSelectedAgentId} />
+        <AgentTable agents={agents} onAgentSelect={handleAgentClick} />
 
         {/* Pagination */}
         <TablePagination

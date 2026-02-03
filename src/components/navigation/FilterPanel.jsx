@@ -1,8 +1,8 @@
 import React from 'react';
-import { ChevronDown, Monitor, Zap, Filter, X } from 'lucide-react';
-import { CLOUD_PROVIDERS, QUICK_FILTERS, SERVICES, SEVERITIES, REGIONS } from '../constants';
+import { ChevronDown, Monitor, AlertTriangle } from 'lucide-react';
+import { CLOUD_PROVIDERS, QUICK_FILTERS, SERVICES, SEVERITIES, REGIONS } from '../../constants';
 
-// Style commun pour les selects (DRY) - Thème Cyber
+// Style commun pour les selects
 const SELECT_STYLE = {
   backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%238b5cf6'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
   backgroundRepeat: 'no-repeat',
@@ -12,11 +12,9 @@ const SELECT_STYLE = {
 };
 
 /**
- * Composant Sidebar - Gère l'affichage des filtres
- * Thème Cyber Security - Violet/Rose
- * Maintenant affiché comme panneau coulissant à côté de la navigation
+ * Composant FilterPanel - Panneau des filtres intégré à la navigation
  */
-const Sidebar = ({
+const FilterPanel = ({
   filters,
   onToggleProvider,
   onServiceChange,
@@ -25,46 +23,16 @@ const Sidebar = ({
   onRegionChange,
   onSourceChange,
   onClearFilters,
-  availableSources = [],
-  isOpen = false,
-  onClose = () => {}
+  availableSources = []
 }) => {
   return (
-    <>
-      {/* Sidebar - Panneau de filtres coulissant */}
-      <div className={`
-        sticky top-0 h-screen z-40
-        w-72 lg:w-80 
-        bg-surface-primary/95 backdrop-blur-md 
-        border-r border-primary-500/20 
-        p-4 lg:p-6 
-        flex flex-col gap-5 lg:gap-7 
-        overflow-y-auto scrollbar-thin 
-        transition-all duration-300 ease-in-out flex-shrink-0
-      `}>
-        {/* Header avec bouton fermer */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <Filter size={18} className="text-primary-400" />
-            <h2 className="text-base font-bold text-primary-300 uppercase tracking-wide">
-              Filters
-            </h2>
-          </div>
-          <button 
-            onClick={onClose}
-            className="p-2 hover:bg-primary-500/20 rounded-lg transition-colors"
-            title="Close filters"
-          >
-            <X size={20} className="text-primary-300" />
-          </button>
-        </div>
-
+    <div className="flex flex-col gap-5">
       {/* Quick Filters */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {QUICK_FILTERS.map(filter => (
           <div
             key={filter.name}
-            className="flex items-center gap-2 px-3.5 py-2 bg-surface-secondary/80 border border-primary-500/30 rounded-lg text-xs font-semibold text-gray-200 cursor-pointer hover:bg-surface-tertiary hover:border-primary-400/50 transition-all backdrop-blur-sm"
+            className="flex items-center gap-2 px-3 py-2 bg-surface-secondary/80 border border-primary-500/30 rounded-lg text-xs font-semibold text-gray-200 cursor-pointer hover:bg-surface-tertiary hover:border-primary-400/50 transition-all"
           >
             <span className="text-base" style={{ color: filter.color }}>
               {filter.icon}
@@ -78,7 +46,7 @@ const Sidebar = ({
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-gray-200">Cloud Provider</span>
-          <div className="w-5 h-5 rounded flex items-center justify-center" style={{background: 'linear-gradient(to right, #a855f7, #ec4899)', boxShadow: '0 4px 20px rgba(147, 51, 234, 0.4)'}}>
+          <div className="w-5 h-5 rounded flex items-center justify-center bg-gradient-to-r from-primary-500 to-pink-500">
             <span className="text-white text-xs font-bold">✓</span>
           </div>
         </div>
@@ -94,11 +62,11 @@ const Sidebar = ({
               }`}
             >
               <div className="flex items-center gap-3">
-                <div
-                  className={`checkbox-custom ${
-                    filters.providers.includes(provider.name) ? 'checked' : ''
-                  }`}
-                >
+                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                  filters.providers.includes(provider.name)
+                    ? 'bg-gradient-to-r from-primary-500 to-pink-500 border-transparent'
+                    : 'border-gray-500'
+                }`}>
                   {filters.providers.includes(provider.name) && (
                     <span className="text-white text-xs font-bold">✓</span>
                   )}
@@ -119,7 +87,7 @@ const Sidebar = ({
         <select
           value={filters.service}
           onChange={(e) => onServiceChange(e.target.value)}
-          className="input-field appearance-none cursor-pointer"
+          className="w-full px-3 py-3 bg-surface-secondary/60 border border-primary-500/20 rounded-lg text-gray-200 focus:outline-none focus:border-primary-400/60 appearance-none cursor-pointer"
           style={SELECT_STYLE}
         >
           <option value="">Tous les services</option>
@@ -145,20 +113,20 @@ const Sidebar = ({
                   : 'bg-surface-secondary/60 border-primary-500/20 hover:bg-surface-tertiary/60 hover:border-primary-400/40'
               }`}
             >
-              <div
-                className={`radio-custom ${
-                  filters.severity === sev.value ? 'selected' : ''
-                }`}
-              >
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                filters.severity === sev.value
+                  ? 'border-primary-400'
+                  : 'border-gray-500'
+              }`}>
                 {filters.severity === sev.value && (
-                  <div className="w-2.5 h-2.5 rounded-full" style={{background: 'linear-gradient(to right, #c084fc, #ec4899)'}}></div>
+                  <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-primary-400 to-pink-500"></div>
                 )}
               </div>
               <span className="text-sm font-medium text-gray-200">
                 {sev.label}
               </span>
               {idx === 0 && (
-                <span className="ml-auto badge-critical">
+                <span className="ml-auto w-6 h-6 rounded flex items-center justify-center bg-red-500/20 text-red-400 text-xs font-bold">
                   !
                 </span>
               )}
@@ -176,7 +144,7 @@ const Sidebar = ({
         <select
           value={filters.source}
           onChange={(e) => onSourceChange(e.target.value)}
-          className="input-field appearance-none cursor-pointer"
+          className="w-full px-3 py-3 bg-surface-secondary/60 border border-primary-500/20 rounded-lg text-gray-200 focus:outline-none focus:border-primary-400/60 appearance-none cursor-pointer"
           style={SELECT_STYLE}
         >
           <option value="">Toutes les sources</option>
@@ -194,7 +162,7 @@ const Sidebar = ({
         <select
           value={filters.region}
           onChange={(e) => onRegionChange(e.target.value)}
-          className="input-field appearance-none cursor-pointer"
+          className="w-full px-3 py-3 bg-surface-secondary/60 border border-primary-500/20 rounded-lg text-gray-200 focus:outline-none focus:border-primary-400/60 appearance-none cursor-pointer"
           style={SELECT_STYLE}
         >
           <option value="">Toutes les régions</option>
@@ -208,17 +176,13 @@ const Sidebar = ({
 
       {/* Clear Filters Button */}
       <button
-        onClick={() => {
-          onClearFilters();
-          onClose();
-        }}
-        className="btn-secondary mt-auto border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-400/50"
+        onClick={onClearFilters}
+        className="w-full py-3 px-4 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-400/50 transition-all font-medium"
       >
         Clear Filters
       </button>
-      </div>
-    </>
+    </div>
   );
 };
 
-export default Sidebar;
+export default FilterPanel;

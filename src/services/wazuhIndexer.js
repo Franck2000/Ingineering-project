@@ -593,6 +593,36 @@ class WazuhIndexerService {
       this.#transformAlert(hit._source, hit._id)
     );
   }
+
+  /**
+   * Récupère l'état de santé du cluster
+   */
+  async getHealth() {
+    try {
+      const response = await this.#request('/_cluster/health', {
+        method: 'GET'
+      });
+      return response;
+    } catch (error) {
+      console.error('Failed to get cluster health:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Récupère la liste des indices
+   */
+  async getIndices() {
+    try {
+      const response = await this.#request('/_cat/indices?format=json&h=health,status,index,docs.count,store.size', {
+        method: 'GET'
+      });
+      return response || [];
+    } catch (error) {
+      console.error('Failed to get indices:', error);
+      return [];
+    }
+  }
 }
 
 export const wazuhIndexer = new WazuhIndexerService();
