@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Search, AlertCircle } from 'lucide-react';
 
 // Composants
 import LogDetailsModal from './LogDetailsModal';
 import AlertRow from './AlertRow';
-import SearchBar from './SearchBar';
+import AdvancedSearch from './AdvancedSearch';
 import Pagination from './Pagination';
 
 /**
@@ -20,25 +20,18 @@ const AlertsTable = ({
   hasNextPage, 
   hasPreviousPage 
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedAlert, setSelectedAlert] = useState(null);
+  const [filteredAlerts, setFilteredAlerts] = useState(alerts);
 
-  // Filtrer les alertes selon la recherche
-  const filteredAlerts = useMemo(() => {
-    if (!searchQuery.trim()) return alerts;
-    
-    const query = searchQuery.toLowerCase();
-    return alerts.filter(alert => 
-      alert.message?.toLowerCase().includes(query) ||
-      alert.description?.toLowerCase().includes(query) ||
-      alert.provider?.toLowerCase().includes(query) ||
-      alert.service?.toLowerCase().includes(query) ||
-      alert.severity?.toLowerCase().includes(query) ||
-      alert.status?.toLowerCase().includes(query) ||
-      alert.environment?.toLowerCase().includes(query) ||
-      alert.time?.toLowerCase().includes(query)
-    );
-  }, [alerts, searchQuery]);
+  // Callback pour recevoir les résultats filtrés
+  const handleFilteredResults = useCallback((results) => {
+    setFilteredAlerts(results);
+  }, []);
+
+  // Mettre à jour quand alerts change
+  useMemo(() => {
+    setFilteredAlerts(alerts);
+  }, [alerts]);
 
   // Colonnes du tableau
   const columns = [
@@ -62,22 +55,15 @@ const AlertsTable = ({
       )}
 
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-2">
-          <AlertCircle size={20} className="text-primary-400" />
-          <span className="text-lg font-bold text-gradient">Alerts Table</span>
-          <span className="text-xs text-gray-500 ml-2">
-            (Cliquez sur une ligne pour voir les détails)
-          </span>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <SearchBar 
-            value={searchQuery}
-            onChange={setSearchQuery}
-            resultCount={filteredAlerts.length}
-            placeholder="Rechercher dans les logs..."
-          />
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={20} className="text-primary-400" />
+            <span className="text-lg font-bold text-gradient">Alerts Table</span>
+            <span className="text-xs text-gray-500 ml-2">
+              ({filteredAlerts.length} alertes)
+            </span>
+          </div>
           
           {/* Indicateurs décoratifs */}
           <div className="flex gap-2">
@@ -86,6 +72,13 @@ const AlertsTable = ({
             <div className="w-2.5 h-2.5 rounded-full" style={{backgroundColor: 'rgba(139, 92, 246, 0.4)'}} />
           </div>
         </div>
+        
+        {/* Recherche avancée */}
+        <AdvancedSearch 
+          alerts={alerts}
+          onFilteredResults={handleFilteredResults}
+          placeholder="Rechercher par champ (ex: agent.name:server, rule.level:12)"
+        />
       </div>
 
       {/* Table */}
@@ -107,14 +100,11 @@ const AlertsTable = ({
             {filteredAlerts.length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="px-3.5 py-8 text-center text-gray-400">
-                  {searchQuery ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <Search size={24} className="text-primary-500/40" />
-                      <span>Aucun résultat pour "{searchQuery}"</span>
-                    </div>
-                  ) : (
-                    'Aucune alerte à afficher'
-                  )}
+                  <div className="flex flex-col items-center gap-2">
+                    <Search size={24} className="text-primary-500/40" />
+                    <span>Aucun résultat trouvé</span>
+                    <span className="text-xs text-gray-500">Modifiez vos filtres ou votre recherche</span>
+                  </div>
                 </td>
               </tr>
             ) : (
