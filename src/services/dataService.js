@@ -130,6 +130,8 @@ class DataService {
    * @param {number} options.minutes - Nombre de minutes pour déterminer l'échelle
    * @param {string} options.fromDate - Date de début ISO
    * @param {string} options.toDate - Date de fin ISO
+   * @param {Array} options.providers - Filtrer par providers
+   * @param {string} options.severity - Filtrer par sévérité
    */
   async getTimeSeriesData(options = {}) {
     if (!wazuhAuth.isAuthenticated()) {
@@ -138,6 +140,16 @@ class DataService {
 
     const hours = options.hours || 24;
     const minutes = options.minutes || hours * 60;
+    
+    // Vérifier si des filtres sidebar sont actifs
+    const hasSidebarFilters = (
+      (options.providers && options.providers.length > 0) ||
+      options.severity ||
+      options.service ||
+      options.environment ||
+      options.region ||
+      options.source
+    );
     
     // Déterminer le format de l'échelle de temps
     const formatTime = (date) => {
@@ -162,7 +174,13 @@ class DataService {
     };
 
     try {
-      // Passer les dates directement à l'indexer pour un filtrage côté serveur
+      // Si des filtres sidebar sont actifs, calculer à partir des alertes filtrées
+      if (hasSidebarFilters) {
+        const alerts = await this.getAlerts(options);
+        return this._buildTimelineFromAlerts(alerts, minutes, formatTime);
+      }
+      
+      // Sinon, utiliser l'agrégation OpenSearch optimisée
       const timeline = await wazuhIndexer.getTimelineByCloudProvider(hours, {
         fromDate: options.fromDate,
         toDate: options.toDate
@@ -193,6 +211,60 @@ class DataService {
         return [];
       }
     }
+  }
+
+  /**
+   * Construit une timeline à partir d'alertes filtrées
+   */
+  _buildTimelineFromAlerts(alerts, minutes, formatTime) {
+    if (!alerts.length) return [];
+    
+    // Déterminer l'intervalle de regroupement
+    let intervalMs;
+    if (minutes > 10080) { // Plus de 7 jours -> intervalle de 1 jour
+      intervalMs = 24 * 60 * 60 * 1000;
+    } else if (minutes > 2880) { // Plus de 2 jours -> intervalle de 6h
+      intervalMs = 6 * 60 * 60 * 1000;
+    } else if (minutes > 1440) { // Plus de 24h -> intervalle de 3h
+      intervalMs = 3 * 60 * 60 * 1000;
+    } else if (minutes > 360) { // Plus de 6h -> intervalle de 1h
+      intervalMs = 60 * 60 * 1000;
+    } else { // Moins de 6h -> intervalle de 30min
+      intervalMs = 30 * 60 * 1000;
+    }
+    
+    // Grouper les alertes par intervalle de temps et provider
+    const buckets = {};
+    
+    alerts.forEach(alert => {
+      const timestamp = new Date(alert.timestamp || alert.time).getTime();
+      const bucketKey = Math.floor(timestamp / intervalMs) * intervalMs;
+      
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = {
+          time: new Date(bucketKey).toISOString(),
+          AWS: 0,
+          Azure: 0,
+          GCP: 0,
+          'On Premise': 0
+        };
+      }
+      
+      const provider = alert.provider || 'On Premise';
+      if (provider === 'AWS') buckets[bucketKey].AWS++;
+      else if (provider === 'Azure') buckets[bucketKey].Azure++;
+      else if (provider === 'GCP') buckets[bucketKey].GCP++;
+      else buckets[bucketKey]['On Premise']++;
+    });
+    
+    // Convertir en tableau trié
+    return Object.values(buckets)
+      .sort((a, b) => new Date(a.time) - new Date(b.time))
+      .map(bucket => ({
+        ...bucket,
+        time: formatTime(bucket.time),
+        timestamp: bucket.time
+      }));
   }
 
   /**

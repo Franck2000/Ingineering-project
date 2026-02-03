@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 /**
  * Hook personnalisé pour gérer le chargement des données
@@ -9,6 +9,13 @@ export const useDataFetch = (fetchFunction, dependencies = []) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Garder une référence stable de la fonction fetch
+  const fetchFunctionRef = useRef(fetchFunction);
+  fetchFunctionRef.current = fetchFunction;
+
+  // Sérialiser les dépendances pour une comparaison stable
+  const depsKey = JSON.stringify(dependencies);
 
   useEffect(() => {
     let isMounted = true;
@@ -17,7 +24,7 @@ export const useDataFetch = (fetchFunction, dependencies = []) => {
       try {
         setLoading(true);
         setError(null);
-        const result = await fetchFunction();
+        const result = await fetchFunctionRef.current();
         
         if (isMounted) {
           setData(result);
@@ -25,6 +32,7 @@ export const useDataFetch = (fetchFunction, dependencies = []) => {
         }
       } catch (err) {
         if (isMounted) {
+          console.error('useDataFetch error:', err);
           setError(err.message || 'Une erreur est survenue');
           setLoading(false);
         }
@@ -36,20 +44,21 @@ export const useDataFetch = (fetchFunction, dependencies = []) => {
     return () => {
       isMounted = false;
     };
-  }, dependencies);
+  }, [depsKey]); // Utiliser la clé sérialisée au lieu des objets
 
-  const refetch = async () => {
+  const refetch = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const result = await fetchFunction();
+      const result = await fetchFunctionRef.current();
       setData(result);
       setLoading(false);
     } catch (err) {
+      console.error('useDataFetch refetch error:', err);
       setError(err.message || 'Une erreur est survenue');
       setLoading(false);
     }
-  };
+  }, []);
 
   return { data, loading, error, refetch };
 };

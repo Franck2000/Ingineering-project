@@ -172,6 +172,9 @@ const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (
   // Filtrer les alertes
   useEffect(() => {
     let filtered = [...alerts];
+    
+    // Déterminer si des filtres sont actifs
+    const hasActiveFilters = activeFilters.length > 0 || query.trim().length > 0;
 
     // Appliquer les filtres actifs avec la logique ET ou OU
     if (activeFilters.length > 0) {
@@ -226,7 +229,9 @@ const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (
       });
     }
 
-    onFilteredResults(filtered);
+    // Passer les résultats filtrés, l'état des filtres et la signature au parent
+    const filterSignature = JSON.stringify({ filters: activeFilters.map(f => f.display), query: query.trim(), logic: logicOperator });
+    onFilteredResults(filtered, hasActiveFilters, filterSignature);
   }, [alerts, activeFilters, query, logicOperator, onFilteredResults]);
 
   // Gestion du clavier

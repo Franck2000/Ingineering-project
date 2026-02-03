@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import StatsCards from './components/StatsCards';
@@ -32,6 +32,7 @@ function App() {
 
   // État local pour les données
   const [filteredAlerts, setFilteredAlerts] = useState([]);
+  const [searchFilteredAlerts, setSearchFilteredAlerts] = useState([]); // Alertes filtrées par AdvancedSearch
   const [pendingAlerts, setPendingAlerts] = useState([]); // Alertes en attente
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [availableSources, setAvailableSources] = useState([]);
@@ -39,6 +40,7 @@ function App() {
   const [newAlertsCount, setNewAlertsCount] = useState(0); // Compteur d'alertes en attente
   const [sidebarOpen, setSidebarOpen] = useState(false); // Sidebar mobile
   const [timeRange, setTimeRange] = useState({ type: 'relative', value: '24h', minutes: 1440, label: 'Last 24 hours' }); // Période temporelle
+  const [advancedSearchActive, setAdvancedSearchActive] = useState(false); // Indique si des filtres de recherche avancée sont actifs
   
   // Référence pour garder trace des IDs actuels
   const currentAlertsRef = useRef(new Set());
@@ -55,8 +57,8 @@ function App() {
     clearFilters
   } = useFilters();
 
-  // Calculer les options de filtrage basées sur timeRange
-  const getFilterOptions = () => {
+  // Calculer les options de filtrage basées sur timeRange (mémorisé)
+  const filterOptions = useMemo(() => {
     const now = new Date();
     if (timeRange.type === 'relative') {
       return {
@@ -83,13 +85,12 @@ function App() {
       fromDate: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
       toDate: now.toISOString()
     };
-  };
+  }, [timeRange]);
 
-  // Combiner timeRange et filtres sidebar pour une utilisation unifiée
-  const getCombinedFilters = () => {
-    const timeFilters = getFilterOptions();
+  // Combiner timeRange et filtres sidebar pour une utilisation unifiée (mémorisé)
+  const combinedFilters = useMemo(() => {
     return {
-      ...timeFilters,
+      ...filterOptions,
       providers: filters.providers,
       severity: filters.severity,
       service: filters.service,
@@ -97,32 +98,32 @@ function App() {
       region: filters.region,
       source: filters.source
     };
-  };
+  }, [filterOptions, filters]);
 
   // Chargement des données avec les hooks personnalisés
   const { data: statistics, refetch: refetchStats } = useDataFetch(
-    () => dataService.getStatistics(getCombinedFilters()),
-    [timeRange, filters]
+    () => dataService.getStatistics(combinedFilters),
+    [combinedFilters]
   );
 
   const { data: timeSeriesData, refetch: refetchTimeSeries } = useDataFetch(
-    () => dataService.getTimeSeriesData(getCombinedFilters()),
-    [timeRange, filters]
+    () => dataService.getTimeSeriesData(combinedFilters),
+    [combinedFilters]
   );
 
   const { data: providerDistribution, refetch: refetchDistribution } = useDataFetch(
-    () => dataService.getProviderDistribution(getCombinedFilters()),
-    [timeRange, filters]
+    () => dataService.getProviderDistribution(combinedFilters),
+    [combinedFilters]
   );
 
   const { data: impactedProviders, refetch: refetchProviders } = useDataFetch(
-    () => dataService.getImpactedProviders(getCombinedFilters()),
-    [timeRange, filters]
+    () => dataService.getImpactedProviders(combinedFilters),
+    [combinedFilters]
   );
 
   const { data: topServices, refetch: refetchServices } = useDataFetch(
-    () => dataService.getTopServices(getCombinedFilters()),
-    [timeRange, filters]
+    () => dataService.getTopServices(combinedFilters),
+    [combinedFilters]
   );
 
   // Pagination des alertes filtrées
@@ -136,6 +137,130 @@ function App() {
     hasPreviousPage,
     resetPage
   } = usePagination(filteredAlerts);
+
+  // Calculer les statistiques basées sur les alertes filtrées par recherche avancée
+  const computedStats = useMemo(() => {
+    if (!advancedSearchActive || !statistics) {
+      return statistics;
+    }
+    
+    // Recalculer à partir des alertes filtrées par la recherche
+    const severityStats = searchFilteredAlerts.reduce((acc, alert) => {
+      const severity = alert.severity || 'Low';
+      acc[severity] = (acc[severity] || 0) + 1;
+      return acc;
+    }, {});
+    
+    return {
+      ...statistics,
+      totalAlerts: searchFilteredAlerts.length,
+      criticalAlerts: severityStats.Critical || 0,
+      highAlerts: severityStats.High || 0,
+      mediumAlerts: severityStats.Medium || 0,
+      lowAlerts: severityStats.Low || 0
+    };
+  }, [advancedSearchActive, searchFilteredAlerts, statistics]);
+
+  // Calculer la distribution par provider basée sur les alertes filtrées
+  const computedProviderDistribution = useMemo(() => {
+    if (!advancedSearchActive || !providerDistribution) {
+      return providerDistribution;
+    }
+    
+    const providerColors = {
+      AWS: '#10B981',
+      Azure: '#3B82F6',
+      GCP: '#EF4444',
+      'On Premise': '#8B5CF6'
+    };
+    
+    const distribution = {};
+    searchFilteredAlerts.forEach(alert => {
+      const provider = alert.provider || 'On Premise';
+      distribution[provider] = (distribution[provider] || 0) + 1;
+    });
+    
+    return Object.entries(distribution)
+      .filter(([_, value]) => value > 0)
+      .map(([name, value]) => ({
+        name,
+        value,
+        color: providerColors[name] || '#6B7280'
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [advancedSearchActive, searchFilteredAlerts, providerDistribution]);
+
+  // Calculer la timeline basée sur les alertes filtrées
+  const computedTimeSeriesData = useMemo(() => {
+    if (!advancedSearchActive || !timeSeriesData) {
+      return timeSeriesData;
+    }
+    
+    if (searchFilteredAlerts.length === 0) {
+      return [];
+    }
+    
+    const minutes = timeRange.minutes || 1440;
+    
+    // Déterminer l'intervalle
+    let intervalMs;
+    if (minutes > 10080) intervalMs = 24 * 60 * 60 * 1000;
+    else if (minutes > 2880) intervalMs = 6 * 60 * 60 * 1000;
+    else if (minutes > 1440) intervalMs = 3 * 60 * 60 * 1000;
+    else if (minutes > 360) intervalMs = 60 * 60 * 1000;
+    else intervalMs = 30 * 60 * 1000;
+    
+    const formatTime = (date) => {
+      const d = new Date(date);
+      if (minutes > 1440) {
+        return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit' }).replace(',', '');
+      }
+      return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    };
+    
+    const buckets = {};
+    searchFilteredAlerts.forEach(alert => {
+      const timestamp = new Date(alert.timestamp || alert.time).getTime();
+      const bucketKey = Math.floor(timestamp / intervalMs) * intervalMs;
+      
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = { time: new Date(bucketKey).toISOString(), AWS: 0, Azure: 0, GCP: 0, 'On Premise': 0 };
+      }
+      
+      const provider = alert.provider || 'On Premise';
+      if (provider === 'AWS') buckets[bucketKey].AWS++;
+      else if (provider === 'Azure') buckets[bucketKey].Azure++;
+      else if (provider === 'GCP') buckets[bucketKey].GCP++;
+      else buckets[bucketKey]['On Premise']++;
+    });
+    
+    return Object.values(buckets)
+      .sort((a, b) => new Date(a.time) - new Date(b.time))
+      .map(bucket => ({ ...bucket, time: formatTime(bucket.time), timestamp: bucket.time }));
+  }, [advancedSearchActive, searchFilteredAlerts, timeSeriesData, timeRange.minutes]);
+
+  // Calculer les providers impactés basés sur les alertes filtrées
+  const computedImpactedProviders = useMemo(() => {
+    if (!advancedSearchActive || !impactedProviders) {
+      return impactedProviders;
+    }
+    return [...new Set(searchFilteredAlerts.map(alert => alert.provider).filter(Boolean))];
+  }, [advancedSearchActive, searchFilteredAlerts, impactedProviders]);
+
+  // Calculer les top services basés sur les alertes filtrées  
+  const computedTopServices = useMemo(() => {
+    if (!advancedSearchActive || !topServices) {
+      return topServices;
+    }
+    const serviceCounts = searchFilteredAlerts.reduce((acc, alert) => {
+      acc[alert.service] = (acc[alert.service] || 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(serviceCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([service]) => service);
+  }, [advancedSearchActive, searchFilteredAlerts, topServices]);
 
   // Appliquer le mode sombre/clair au document
   useEffect(() => {
@@ -155,9 +280,6 @@ function App() {
   useEffect(() => {
     const loadAlerts = async (isPolling = false) => {
       try {
-        // Utiliser les filtres combinés (timeRange + sidebar)
-        const combinedFilters = getCombinedFilters();
-        
         const data = await dataService.getAlerts(combinedFilters);
         
         // Si c'est un polling, vérifier les nouvelles alertes
@@ -203,7 +325,7 @@ function App() {
       // Cleanup à la destruction du composant
       return () => clearInterval(pollingInterval);
     }
-  }, [isLive, timeRange, filters]); // Dépendance sur isLive, timeRange et filters
+  }, [isLive, combinedFilters]); // Dépendance sur isLive et combinedFilters
 
   // Fonction pour charger les alertes en attente
   const loadPendingAlerts = () => {
@@ -259,10 +381,16 @@ function App() {
   // Handler pour le refresh manuel
   const handleRefresh = async () => {
     dataService.invalidateCache();
-    const combinedFilters = getCombinedFilters();
     const data = await dataService.getAlerts(combinedFilters);
     setFilteredAlerts(data);
     setLastUpdate(new Date());
+    
+    // Mettre à jour la référence des IDs
+    currentAlertsRef.current = new Set(data.map(a => a.id));
+    
+    // Reset les alertes en attente
+    setNewAlertsCount(0);
+    setPendingAlerts([]);
     
     // Rafraîchir tous les graphiques et cartes
     refetchStats();
@@ -343,31 +471,29 @@ function App() {
         />
 
         {/* Stats Cards */}
-        {statistics && impactedProviders && topServices && (
+        {computedStats && computedImpactedProviders && computedTopServices && (
           <StatsCards
-            statistics={statistics}
-            impactedProviders={impactedProviders}
-            topServices={topServices}
+            statistics={computedStats}
+            impactedProviders={computedImpactedProviders}
+            topServices={computedTopServices}
           />
         )}
 
         {/* Charts */}
-        {timeSeriesData && providerDistribution && (
+        {computedTimeSeriesData && computedProviderDistribution && (
           <Charts
-            timeSeriesData={timeSeriesData}
-            providerDistribution={providerDistribution}
+            timeSeriesData={computedTimeSeriesData}
+            providerDistribution={computedProviderDistribution}
           />
         )}
 
         {/* Alerts Table */}
         <AlertsTable
-          alerts={currentAlerts}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onNextPage={nextPage}
-          onPreviousPage={previousPage}
-          hasNextPage={hasNextPage}
-          hasPreviousPage={hasPreviousPage}
+          alerts={filteredAlerts}
+          onSearchFiltersChange={(results, hasActiveFilters) => {
+            setSearchFilteredAlerts(results);
+            setAdvancedSearchActive(hasActiveFilters);
+          }}
         />
       </div>
 
