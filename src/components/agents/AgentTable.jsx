@@ -21,9 +21,12 @@ const GroupBadge = ({ name }) => (
 );
 
 // Ligne d'un agent
-const AgentRow = ({ agent }) => (
-  <tr className="border-b border-primary-500/10 hover:bg-primary-500/5 transition-colors">
-    <td className="py-3 px-4">
+const AgentRow = ({ agent, onSelect }) => (
+  <tr 
+    className="border-b border-primary-500/10 hover:bg-primary-500/5 transition-colors cursor-pointer"
+    onClick={() => onSelect(agent.id)}
+  >
+    <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
       <input type="checkbox" className="rounded border-primary-500/30 bg-surface-secondary" />
     </td>
     <td className="py-3 px-4 text-sm text-gray-300 font-mono">{agent.id}</td>
@@ -39,9 +42,13 @@ const AgentRow = ({ agent }) => (
     <td className="py-3 px-4 text-sm text-gray-300">{agent.node_name || 'N/A'}</td>
     <td className="py-3 px-4 text-sm text-gray-300 font-mono">{agent.version || 'N/A'}</td>
     <td className="py-3 px-4"><StatusBadge status={agent.status} /></td>
-    <td className="py-3 px-4">
+    <td className="py-3 px-4" onClick={e => e.stopPropagation()}>
       <div className="flex items-center gap-2">
-        <button className="p-1.5 hover:bg-primary-500/20 rounded transition-colors">
+        <button 
+          className="p-1.5 hover:bg-primary-500/20 rounded transition-colors"
+          onClick={() => onSelect(agent.id)}
+          title="Voir les détails"
+        >
           <Eye size={16} className="text-gray-400 hover:text-primary-300" />
         </button>
         <button className="p-1.5 hover:bg-primary-500/20 rounded transition-colors">
@@ -55,7 +62,7 @@ const AgentRow = ({ agent }) => (
 // En-têtes du tableau
 const TABLE_HEADERS = ['', 'ID ↑', 'Name', 'IP address', 'Group(s)', 'Operating system', 'Cluster node', 'Version', 'Status', 'Actions'];
 
-const AgentTable = ({ agents }) => (
+const AgentTable = ({ agents, onAgentSelect }) => (
   <div className="overflow-x-auto">
     <table className="w-full">
       <thead>
@@ -68,7 +75,7 @@ const AgentTable = ({ agents }) => (
         </tr>
       </thead>
       <tbody>
-        {agents.map(agent => <AgentRow key={agent.id} agent={agent} />)}
+        {agents.map(agent => <AgentRow key={agent.id} agent={agent} onSelect={onAgentSelect} />)}
       </tbody>
     </table>
   </div>

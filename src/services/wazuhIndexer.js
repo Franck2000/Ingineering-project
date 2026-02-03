@@ -473,6 +473,126 @@ class WazuhIndexerService {
       return timestamp;
     }
   }
+
+  /**
+   * Récupère l'évolution des événements pour un agent spécifique
+   * @param {string} agentId - ID de l'agent
+   * @param {number} hours - Nombre d'heures à récupérer (défaut: 24)
+   */
+  async getAgentEventTimeline(agentId, hours = 24) {
+    let interval;
+    if (hours > 168) interval = '1d';
+    else if (hours > 48) interval = '6h';
+    else if (hours > 24) interval = '3h';
+    else if (hours > 6) interval = '1h';
+    else interval = '30m';
+
+    const query = {
+      bool: {
+        must: [
+          { term: { 'agent.id': agentId } },
+          { range: { timestamp: { gte: `now-${hours}h`, lte: 'now' } } }
+        ]
+      }
+    };
+
+    const response = await this.#request(`/${indices.alerts}/_search`, {
+      method: 'POST',
+      body: JSON.stringify({
+        size: 0,
+        query,
+        aggs: {
+          timeline: {
+            date_histogram: {
+              field: 'timestamp',
+              fixed_interval: interval,
+              min_doc_count: 0,
+              extended_bounds: {
+                min: `now-${hours}h`,
+                max: 'now'
+              }
+            },
+            aggs: {
+              by_severity: {
+                range: {
+                  field: 'rule.level',
+                  ranges: [
+                    { key: 'Low', from: 0, to: 4 },
+                    { key: 'Medium', from: 4, to: 7 },
+                    { key: 'High', from: 7, to: 12 },
+                    { key: 'Critical', from: 12 }
+                  ]
+                }
+              }
+            }
+          },
+          total_events: { value_count: { field: 'timestamp' } },
+          severity_breakdown: {
+            range: {
+              field: 'rule.level',
+              ranges: [
+                { key: 'Low', from: 0, to: 4 },
+                { key: 'Medium', from: 4, to: 7 },
+                { key: 'High', from: 7, to: 12 },
+                { key: 'Critical', from: 12 }
+              ]
+            }
+          }
+        }
+      })
+    });
+
+    const buckets = response.aggregations?.timeline?.buckets || [];
+    const timeline = buckets.map(bucket => {
+      const severities = {};
+      (bucket.by_severity?.buckets || []).forEach(s => {
+        severities[s.key] = s.doc_count;
+      });
+      return {
+        time: new Date(bucket.key).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        timestamp: bucket.key,
+        total: bucket.doc_count,
+        ...severities
+      };
+    });
+
+    const severityBreakdown = {};
+    (response.aggregations?.severity_breakdown?.buckets || []).forEach(b => {
+      severityBreakdown[b.key] = b.doc_count;
+    });
+
+    return {
+      timeline,
+      total: response.aggregations?.total_events?.value || 0,
+      severityBreakdown
+    };
+  }
+
+  /**
+   * Récupère les dernières alertes d'un agent
+   * @param {string} agentId - ID de l'agent
+   * @param {number} limit - Nombre d'alertes à récupérer
+   */
+  async getAgentAlerts(agentId, limit = 10) {
+    const query = {
+      query: {
+        bool: {
+          must: [{ term: { 'agent.id': agentId } }]
+        }
+      },
+      sort: [{ timestamp: { order: 'desc' } }],
+      size: limit
+    };
+
+    const response = await this.#request(`/${indices.alerts}/_search`, {
+      method: 'POST',
+      body: JSON.stringify(query)
+    });
+
+    return (response.hits?.hits || []).map(hit => 
+      this.#transformAlert(hit._source, hit._id)
+    );
+  }
 }
 
 export const wazuhIndexer = new WazuhIndexerService();

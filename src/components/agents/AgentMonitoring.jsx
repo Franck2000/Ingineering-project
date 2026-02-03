@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { RefreshCw, Download, Server } from 'lucide-react';
 import { useAgents } from '../../hooks/useAgents';
 import { formatChartData } from './agentUtils';
 import DonutChart from './DonutChart';
 import AgentTable from './AgentTable';
+import AgentDetails from './AgentDetails';
 import TablePagination from './TablePagination';
 import SearchBar from './SearchBar';
 
@@ -12,6 +13,8 @@ import SearchBar from './SearchBar';
  * Affiche les statistiques et la liste des agents Wazuh
  */
 const AgentMonitoring = () => {
+  const [selectedAgentId, setSelectedAgentId] = useState(null);
+  
   const {
     agents,
     totalAgents,
@@ -30,6 +33,16 @@ const AgentMonitoring = () => {
 
   // Données formatées pour les graphiques
   const chartData = useMemo(() => formatChartData(stats), [stats]);
+
+  // Afficher les détails d'un agent
+  if (selectedAgentId) {
+    return (
+      <AgentDetails 
+        agentId={selectedAgentId} 
+        onBack={() => setSelectedAgentId(null)} 
+      />
+    );
+  }
 
   // État de chargement
   if (loading) {
@@ -89,7 +102,7 @@ const AgentMonitoring = () => {
         />
 
         {/* Tableau */}
-        <AgentTable agents={agents} />
+        <AgentTable agents={agents} onAgentSelect={setSelectedAgentId} />
 
         {/* Pagination */}
         <TablePagination
