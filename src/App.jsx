@@ -6,6 +6,8 @@ import Charts from './components/Charts';
 import AlertsTable from './components/AlertsTable';
 import LoginPage from './components/LoginPage';
 import NewAlertsToast from './components/NewAlertsToast';
+import { AgentMonitoring } from './components/agents';
+import NavigationTabs from './components/NavigationTabs';
 import { useFilters } from './hooks/useFilters';
 import { usePagination } from './hooks/usePagination';
 import { useDataFetch } from './hooks/useDataFetch';
@@ -29,6 +31,9 @@ function App() {
     const saved = localStorage.getItem('darkMode');
     return saved ? JSON.parse(saved) : false;
   });
+
+  // État pour la navigation entre les pages
+  const [activePage, setActivePage] = useState('dashboard');
 
   // État local pour les données
   const [filteredAlerts, setFilteredAlerts] = useState([]);
@@ -470,31 +475,45 @@ function App() {
           onTimeRangeChange={setTimeRange}
         />
 
-        {/* Stats Cards */}
-        {computedStats && computedImpactedProviders && computedTopServices && (
-          <StatsCards
-            statistics={computedStats}
-            impactedProviders={computedImpactedProviders}
-            topServices={computedTopServices}
-          />
-        )}
-
-        {/* Charts */}
-        {computedTimeSeriesData && computedProviderDistribution && (
-          <Charts
-            timeSeriesData={computedTimeSeriesData}
-            providerDistribution={computedProviderDistribution}
-          />
-        )}
-
-        {/* Alerts Table */}
-        <AlertsTable
-          alerts={filteredAlerts}
-          onSearchFiltersChange={(results, hasActiveFilters) => {
-            setSearchFilteredAlerts(results);
-            setAdvancedSearchActive(hasActiveFilters);
-          }}
+        {/* Navigation Tabs */}
+        <NavigationTabs 
+          activePage={activePage} 
+          onPageChange={setActivePage} 
         />
+
+        {/* Dashboard Page */}
+        {activePage === 'dashboard' && (
+          <>
+            {/* Stats Cards */}
+            {computedStats && computedImpactedProviders && computedTopServices && (
+              <StatsCards
+                statistics={computedStats}
+                impactedProviders={computedImpactedProviders}
+                topServices={computedTopServices}
+              />
+            )}
+
+            {/* Charts */}
+            {computedTimeSeriesData && computedProviderDistribution && (
+              <Charts
+                timeSeriesData={computedTimeSeriesData}
+                providerDistribution={computedProviderDistribution}
+              />
+            )}
+
+            {/* Alerts Table */}
+            <AlertsTable
+              alerts={filteredAlerts}
+              onSearchFiltersChange={(results, hasActiveFilters) => {
+                setSearchFilteredAlerts(results);
+                setAdvancedSearchActive(hasActiveFilters);
+              }}
+            />
+          </>
+        )}
+
+        {/* Endpoints Page */}
+        {activePage === 'endpoints' && <AgentMonitoring />}
       </div>
 
       {/* Toast notification pour les nouvelles alertes */}
