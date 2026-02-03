@@ -33,6 +33,8 @@ function App() {
   const [filteredAlerts, setFilteredAlerts] = useState([]);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [availableSources, setAvailableSources] = useState([]);
+  const [isLive, setIsLive] = useState(true); // Mode live activé par défaut
+  const [newAlertsCount, setNewAlertsCount] = useState(0); // Compteur d'alertes en attente
 
   // Gestion des filtres
   const {
@@ -96,11 +98,23 @@ function App() {
 
   // Chargement initial et polling des alertes en temps réel
   useEffect(() => {
-    const loadAlerts = async () => {
+    const loadAlerts = async (isPolling = false) => {
       try {
         const data = await dataService.getAlerts();
+        
+        // Si c'est un polling et mode pause, compter les nouvelles alertes
+        if (isPolling && !isLive) {
+          const currentIds = new Set(filteredAlerts.map(a => a.id));
+          const newAlerts = data.filter(a => !currentIds.has(a.id));
+          if (newAlerts.length > 0) {
+            setNewAlertsCount(prev => prev + newAlerts.length);
+          }
+          return; // Ne pas mettre à jour les données en mode pause
+        }
+        
         setFilteredAlerts(data);
         setLastUpdate(new Date());
+        setNewAlertsCount(0); // Reset le compteur
         
         // Extraire les sources uniques des alertes
         const sources = [...new Set(data.map(alert => alert.environment).filter(Boolean))];
@@ -111,17 +125,19 @@ function App() {
     };
 
     // Chargement initial
-    loadAlerts();
+    loadAlerts(false);
 
-    // Polling automatique pour le temps réel
-    const pollingInterval = setInterval(() => {
-      dataService.invalidateCache(); // Forcer le rafraîchissement
-      loadAlerts();
-    }, POLLING_CONFIG.ALERTS_INTERVAL);
+    // Polling automatique pour le temps réel (désactivé si interval = 0)
+    if (POLLING_CONFIG.ALERTS_INTERVAL > 0) {
+      const pollingInterval = setInterval(() => {
+        dataService.invalidateCache(); // Forcer le rafraîchissement
+        loadAlerts(true); // C'est un polling
+      }, POLLING_CONFIG.ALERTS_INTERVAL);
 
-    // Cleanup à la destruction du composant
-    return () => clearInterval(pollingInterval);
-  }, []);
+      // Cleanup à la destruction du composant
+      return () => clearInterval(pollingInterval);
+    }
+  }, [isLive]); // Dépendance sur isLive pour réagir au changement de mode
 
   // Application des filtres
   useEffect(() => {
@@ -132,10 +148,13 @@ function App() {
     applyFilters();
   }, [filters]);
 
-  // Réinitialiser la page lors du changement de filtres
+  // Réinitialiser la page uniquement lors du changement de FILTRES (pas du polling)
   useEffect(() => {
-    resetPage();
-  }, [filteredAlerts, resetPage]);
+    // On ne reset que si les filtres ont changé
+    if (Object.values(filters).some(v => v !== 'all' && v !== null && (Array.isArray(v) ? v.length > 0 : true))) {
+      resetPage();
+    }
+  }, [filters, resetPage]);
 
   // Gérer la connexion réussie
   const handleLoginSuccess = () => {
@@ -194,6 +213,9 @@ function App() {
           onLogout={handleLogout}
           username={wazuhAuth.getUsername()}
           lastUpdate={lastUpdate}
+          isLive={isLive}
+          onToggleLive={() => setIsLive(!isLive)}
+          newAlertsCount={newAlertsCount}
         />
 
         {/* Stats Cards */}
