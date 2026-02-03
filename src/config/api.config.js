@@ -64,8 +64,8 @@ export const CLOUD_PROVIDERS = {
     // Tags Wazuh pour identifier les logs GCP
     tags: ['gcp', 'google', 'gcloud']
   },
-  WAZUH: {
-    name: 'Wazuh',
+  On_Premise: {
+    name: 'On Premise',
     color: '#8B5CF6',
     icon: '◆',
     tags: [] // Défaut si aucun cloud provider détecté
@@ -166,7 +166,7 @@ export function detectCloudProvider(alert) {
   ].map(t => t.toLowerCase());
   
   for (const [key, provider] of Object.entries(CLOUD_PROVIDERS)) {
-    if (key === 'WAZUH') continue;
+    if (key === 'On_Premise') continue;
     
     const hasMatch = provider.tags.some(tag => 
       alertTags.some(alertTag => alertTag.includes(tag.toLowerCase()))
@@ -175,5 +175,5 @@ export function detectCloudProvider(alert) {
     if (hasMatch) return provider.name;
   }
   
-  return 'Wazuh';
+  return 'On Premise';
 }

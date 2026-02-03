@@ -107,7 +107,7 @@ class DataService {
         AWS: bucket.AWS || 0,
         Azure: bucket.Azure || 0,
         GCP: bucket.GCP || 0,
-        Wazuh: bucket.Wazuh || 0
+        'On Premise': bucket.On_Premise || 0
       }));
     } catch (error) {
       console.error('Erreur timeline:', error);
@@ -122,7 +122,7 @@ class DataService {
           AWS: 0,
           Azure: 0,
           GCP: 0,
-          Wazuh: bucket.doc_count || 0
+          'On Premise': bucket.doc_count || 0
         }));
       } catch {
         return [];
@@ -132,7 +132,7 @@ class DataService {
 
   /**
    * Récupère la distribution des cloud providers
-   * AWS, Azure, GCP, Wazuh (local)
+   * AWS, Azure, GCP, On_Premise (local)
    */
   async getProviderDistribution() {
     if (!wazuhAuth.isAuthenticated()) {
@@ -143,7 +143,8 @@ class DataService {
       AWS: '#10B981',     // Vert
       Azure: '#3B82F6',   // Bleu
       GCP: '#EF4444',     // Rouge
-      Wazuh: '#8B5CF6'    // Violet
+      'On Premise': '#8B5CF6',  // Violet
+      On_Premise: '#8B5CF6'  // Violet (fallback)
     };
 
     try {

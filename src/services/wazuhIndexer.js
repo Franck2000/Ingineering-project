@@ -147,10 +147,10 @@ class WazuhIndexerService {
       }
     }
     
-    // Ajouter les alertes locales (Wazuh)
+    // Ajouter les alertes locales (On-Premise)
     if (wazuhCount > 0) {
       // Éviter de compter deux fois les alertes avec labels
-      results['Wazuh'] = Math.max(0, wazuhCount - labeledCount);
+      results['On_Premise'] = Math.max(0, wazuhCount - labeledCount);
     }
 
     return results;
@@ -190,7 +190,7 @@ class WazuhIndexerService {
         AWS: 0,
         Azure: 0,
         GCP: 0,
-        Wazuh: 0
+        On_Premise: 0
       };
 
       // Compter par agent.labels.source
@@ -226,8 +226,8 @@ class WazuhIndexerService {
         }
       }
       
-      // Wazuh = alertes locales (sans labels cloud)
-      result.Wazuh = Math.max(0, totalFromAgents - labeledCount);
+      // On_Premise = alertes locales (sans labels cloud)
+      result.On_Premise = Math.max(0, totalFromAgents - labeledCount);
 
       return result;
     });

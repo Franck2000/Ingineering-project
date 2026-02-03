@@ -108,7 +108,7 @@ const Charts = ({ timeSeriesData, providerDistribution }) => {
             <Bar dataKey="AWS" stackId="a" fill="#10B981" radius={[0, 0, 0, 0]} />
             <Bar dataKey="Azure" stackId="a" fill="#3B82F6" radius={[0, 0, 0, 0]} />
             <Bar dataKey="GCP" stackId="a" fill="#EF4444" radius={[0, 0, 0, 0]} />
-            <Bar dataKey="Wazuh" stackId="a" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="On Premise" stackId="a" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
