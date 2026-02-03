@@ -35,6 +35,7 @@ const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [activeFilters, setActiveFilters] = useState([]);
+  const [logicOperator, setLogicOperator] = useState('AND'); // 'AND' ou 'OR'
   const inputRef = useRef(null);
   const suggestionsRef = useRef(null);
   
@@ -172,14 +173,28 @@ const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (
   useEffect(() => {
     let filtered = [...alerts];
 
-    // Appliquer les filtres actifs
-    activeFilters.forEach(filter => {
-      filtered = filtered.filter(alert => {
-        const flattened = flattenObject(alert._source || alert);
-        const fieldValue = flattened[filter.field];
-        return fieldValue && fieldValue.toLowerCase().includes(filter.value.toLowerCase());
-      });
-    });
+    // Appliquer les filtres actifs avec la logique ET ou OU
+    if (activeFilters.length > 0) {
+      if (logicOperator === 'AND') {
+        // Logique ET : toutes les conditions doivent être vraies
+        activeFilters.forEach(filter => {
+          filtered = filtered.filter(alert => {
+            const flattened = flattenObject(alert._source || alert);
+            const fieldValue = flattened[filter.field];
+            return fieldValue && fieldValue.toLowerCase().includes(filter.value.toLowerCase());
+          });
+        });
+      } else {
+        // Logique OU : au moins une condition doit être vraie
+        filtered = filtered.filter(alert => {
+          const flattened = flattenObject(alert._source || alert);
+          return activeFilters.some(filter => {
+            const fieldValue = flattened[filter.field];
+            return fieldValue && fieldValue.toLowerCase().includes(filter.value.toLowerCase());
+          });
+        });
+      }
+    }
 
     // Appliquer la recherche textuelle
     if (query.trim()) {
@@ -212,7 +227,7 @@ const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (
     }
 
     onFilteredResults(filtered);
-  }, [alerts, activeFilters, query, onFilteredResults]);
+  }, [alerts, activeFilters, query, logicOperator, onFilteredResults]);
 
   // Gestion du clavier
   const handleKeyDown = (e) => {
@@ -270,6 +285,21 @@ const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (
       <div className="relative">
         <div className="flex items-center gap-2 flex-wrap p-2 bg-surface-secondary/60 border border-primary-500/30 rounded-lg focus-within:border-primary-400 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all">
           <Filter size={16} className="text-primary-400/60 ml-1" />
+          
+          {/* Toggle AND/OR - affiché seulement s'il y a des filtres */}
+          {activeFilters.length > 0 && (
+            <button
+              onClick={() => setLogicOperator(prev => prev === 'AND' ? 'OR' : 'AND')}
+              className={`px-2 py-0.5 text-xs font-bold rounded transition-all ${
+                logicOperator === 'AND' 
+                  ? 'bg-primary-500/40 text-primary-200 hover:bg-primary-500/60' 
+                  : 'bg-cyber-pink/40 text-pink-200 hover:bg-cyber-pink/60'
+              }`}
+              title={logicOperator === 'AND' ? 'Mode ET: toutes les conditions' : 'Mode OU: au moins une condition'}
+            >
+              {logicOperator}
+            </button>
+          )}
           
           {/* Filtres actifs */}
           {activeFilters.map((filter, index) => (

@@ -8,21 +8,14 @@
 import { wazuhApi } from './wazuhApi';
 import { wazuhIndexer } from './wazuhIndexer';
 import { wazuhAuth } from './wazuhAuth';
-import { CACHE_CONFIG, CLOUD_PROVIDERS } from '../config/api.config';
 
 class DataService {
-  constructor() {
-    this.cachedAlerts = null;
-    this.cacheTimestamp = null;
-    this.cacheTimeout = CACHE_CONFIG.ALERTS_TTL;
-  }
-
   /**
-   * Invalide le cache
+   * Invalide le cache (méthode conservée pour compatibilité)
    */
   invalidateCache() {
-    this.cachedAlerts = null;
-    this.cacheTimestamp = null;
+    // Actuellement le cache n'est pas utilisé car le filtrage par date
+    // nécessite toujours des données fraîches
   }
 
   /**
@@ -55,10 +48,9 @@ class DataService {
 
   /**
    * Récupère les statistiques
-   * Utilise des requêtes de comptage efficaces au lieu de récupérer toutes les alertes
-   * @param {Object} options - Options de filtrage
-   * @param {string} options.fromDate - Date de début ISO
-   * @param {string} options.toDate - Date de fin ISO
+   * Si des filtres sidebar sont actifs, calcule à partir des alertes filtrées
+   * Sinon, utilise les APIs de comptage efficaces d'OpenSearch
+   * @param {Object} options - Options de filtrage combinées
    */
   async getStatistics(options = {}) {
     if (!wazuhAuth.isAuthenticated()) {
@@ -66,11 +58,45 @@ class DataService {
     }
 
     try {
-      // Utiliser les APIs de comptage efficaces d'OpenSearch
-      const [totalCount, severityStats, agentStats] = await Promise.all([
+      // Vérifier si des filtres sidebar sont actifs
+      const hasSidebarFilters = (
+        (options.providers && options.providers.length > 0) ||
+        options.severity ||
+        options.service ||
+        options.environment ||
+        options.region ||
+        options.source
+      );
+
+      // Stats agents (ne dépendent pas des filtres)
+      const agentStats = await wazuhApi.getAgentStats();
+
+      if (hasSidebarFilters) {
+        // Si filtres sidebar actifs, calculer à partir des alertes filtrées
+        const alerts = await this.getAlerts(options);
+        
+        const severityStats = alerts.reduce((acc, alert) => {
+          const severity = alert.severity || 'Low';
+          acc[severity] = (acc[severity] || 0) + 1;
+          return acc;
+        }, {});
+
+        return {
+          totalAlerts: alerts.length,
+          criticalAlerts: severityStats.Critical || 0,
+          highAlerts: severityStats.High || 0,
+          mediumAlerts: severityStats.Medium || 0,
+          lowAlerts: severityStats.Low || 0,
+          activeAgents: agentStats?.active || 0,
+          disconnectedAgents: agentStats?.disconnected || 0,
+          totalAgents: agentStats?.total || 0
+        };
+      }
+
+      // Sinon, utiliser les APIs de comptage efficaces d'OpenSearch
+      const [totalCount, severityStats] = await Promise.all([
         wazuhIndexer.getAlertsCount({ fromDate: options.fromDate, toDate: options.toDate }),
-        wazuhIndexer.getAlertsBySeverity({ fromDate: options.fromDate, toDate: options.toDate }),
-        wazuhApi.getAgentStats()
+        wazuhIndexer.getAlertsBySeverity({ fromDate: options.fromDate, toDate: options.toDate })
       ]);
 
       return {
@@ -136,20 +162,13 @@ class DataService {
     };
 
     try {
-      const timeline = await wazuhIndexer.getTimelineByCloudProvider(hours);
+      // Passer les dates directement à l'indexer pour un filtrage côté serveur
+      const timeline = await wazuhIndexer.getTimelineByCloudProvider(hours, {
+        fromDate: options.fromDate,
+        toDate: options.toDate
+      });
       
-      // Filtrer par dates si spécifiées
-      let filteredTimeline = timeline;
-      if (options.fromDate) {
-        const fromTime = new Date(options.fromDate).getTime();
-        const toTime = options.toDate ? new Date(options.toDate).getTime() : Date.now();
-        filteredTimeline = timeline.filter(bucket => {
-          const bucketTime = new Date(bucket.time).getTime();
-          return bucketTime >= fromTime && bucketTime <= toTime;
-        });
-      }
-      
-      return filteredTimeline.map(bucket => ({
+      return timeline.map(bucket => ({
         time: formatTime(bucket.time),
         timestamp: bucket.time,
         AWS: bucket.AWS || 0,
@@ -190,8 +209,7 @@ class DataService {
       AWS: '#10B981',     // Vert
       Azure: '#3B82F6',   // Bleu
       GCP: '#EF4444',     // Rouge
-      'On Premise': '#8B5CF6',  // Violet
-      On_Premise: '#8B5CF6'  // Violet (fallback)
+      'On Premise': '#8B5CF6'  // Violet
     };
 
     try {

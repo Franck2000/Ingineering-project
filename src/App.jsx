@@ -71,6 +71,7 @@ function App() {
       const end = new Date(timeRange.end);
       const diffMinutes = Math.round((end.getTime() - start.getTime()) / (60 * 1000));
       return {
+        hours: Math.ceil(diffMinutes / 60),
         minutes: diffMinutes,
         fromDate: timeRange.start,
         toDate: timeRange.end
@@ -84,30 +85,44 @@ function App() {
     };
   };
 
+  // Combiner timeRange et filtres sidebar pour une utilisation unifiée
+  const getCombinedFilters = () => {
+    const timeFilters = getFilterOptions();
+    return {
+      ...timeFilters,
+      providers: filters.providers,
+      severity: filters.severity,
+      service: filters.service,
+      environment: filters.environment,
+      region: filters.region,
+      source: filters.source
+    };
+  };
+
   // Chargement des données avec les hooks personnalisés
   const { data: statistics, refetch: refetchStats } = useDataFetch(
-    () => dataService.getStatistics(getFilterOptions()),
-    [timeRange]
+    () => dataService.getStatistics(getCombinedFilters()),
+    [timeRange, filters]
   );
 
   const { data: timeSeriesData, refetch: refetchTimeSeries } = useDataFetch(
-    () => dataService.getTimeSeriesData(getFilterOptions()),
-    [timeRange]
+    () => dataService.getTimeSeriesData(getCombinedFilters()),
+    [timeRange, filters]
   );
 
   const { data: providerDistribution, refetch: refetchDistribution } = useDataFetch(
-    () => dataService.getProviderDistribution(getFilterOptions()),
-    [timeRange]
+    () => dataService.getProviderDistribution(getCombinedFilters()),
+    [timeRange, filters]
   );
 
   const { data: impactedProviders, refetch: refetchProviders } = useDataFetch(
-    () => dataService.getImpactedProviders(getFilterOptions()),
-    [timeRange]
+    () => dataService.getImpactedProviders(getCombinedFilters()),
+    [timeRange, filters]
   );
 
   const { data: topServices, refetch: refetchServices } = useDataFetch(
-    () => dataService.getTopServices(getFilterOptions()),
-    [timeRange]
+    () => dataService.getTopServices(getCombinedFilters()),
+    [timeRange, filters]
   );
 
   // Pagination des alertes filtrées
@@ -136,10 +151,10 @@ function App() {
   useEffect(() => {
     const loadAlerts = async (isPolling = false) => {
       try {
-        // Utiliser les mêmes options de filtrage que pour les autres données
-        const filterOptions = getFilterOptions();
+        // Utiliser les filtres combinés (timeRange + sidebar)
+        const combinedFilters = getCombinedFilters();
         
-        const data = await dataService.getAlerts(filterOptions);
+        const data = await dataService.getAlerts(combinedFilters);
         
         // Si c'est un polling, vérifier les nouvelles alertes
         if (isPolling) {
@@ -184,7 +199,7 @@ function App() {
       // Cleanup à la destruction du composant
       return () => clearInterval(pollingInterval);
     }
-  }, [isLive, timeRange]); // Dépendance sur isLive et timeRange pour réagir aux changements
+  }, [isLive, timeRange, filters]); // Dépendance sur isLive, timeRange et filters
 
   // Fonction pour charger les alertes en attente
   const loadPendingAlerts = () => {
@@ -216,16 +231,7 @@ function App() {
     setNewAlertsCount(0);
   };
 
-  // Application des filtres
-  useEffect(() => {
-    const applyFilters = async () => {
-      const filtered = await dataService.getAlerts(filters);
-      setFilteredAlerts(filtered);
-    };
-    applyFilters();
-  }, [filters]);
-
-  // Réinitialiser la page uniquement lors du changement de FILTRES (pas du polling)
+  // Réinitialiser la page lors du changement de filtres
   useEffect(() => {
     // On ne reset que si les filtres ont changé
     if (Object.values(filters).some(v => v !== 'all' && v !== null && (Array.isArray(v) ? v.length > 0 : true))) {
@@ -249,8 +255,8 @@ function App() {
   // Handler pour le refresh manuel
   const handleRefresh = async () => {
     dataService.invalidateCache();
-    const filterOptions = getFilterOptions();
-    const data = await dataService.getAlerts(filterOptions);
+    const combinedFilters = getCombinedFilters();
+    const data = await dataService.getAlerts(combinedFilters);
     setFilteredAlerts(data);
     setLastUpdate(new Date());
     

@@ -170,8 +170,11 @@ class WazuhIndexerService {
    * Récupère la timeline par cloud provider
    * Utilise agent.labels.source et agent.name pour la classification
    * @param {number} hours - Nombre d'heures à récupérer
+   * @param {Object} options - Options de filtrage
+   * @param {string} options.fromDate - Date de début ISO
+   * @param {string} options.toDate - Date de fin ISO
    */
-  async getTimelineByCloudProvider(hours = 24) {
+  async getTimelineByCloudProvider(hours = 24, options = {}) {
     // Adapter l'intervalle selon la période demandée
     let interval;
     if (hours > 168) { // Plus de 7 jours -> intervalle de 1 jour
@@ -185,11 +188,24 @@ class WazuhIndexerService {
     } else { // Moins de 6h -> intervalle de 30min
       interval = '30m';
     }
+
+    // Construire le filtre de date
+    const timeRange = {};
+    if (options.fromDate) {
+      timeRange.gte = options.fromDate;
+    } else {
+      timeRange.gte = `now-${hours}h`;
+    }
+    if (options.toDate) {
+      timeRange.lte = options.toDate;
+    } else {
+      timeRange.lte = 'now';
+    }
     
     const query = {
       size: 0,
       query: {
-        range: { timestamp: { gte: `now-${hours}h`, lte: 'now' } }
+        range: { timestamp: timeRange }
       },
       aggs: {
         timeline: {
@@ -220,39 +236,50 @@ class WazuhIndexerService {
 
       // Compter par agent.labels.source
       const sources = bucket.by_source?.buckets || [];
-      let labeledCount = 0;
+      let cloudLabeledCount = 0;
       
       for (const src of sources) {
         const source = src.key.toLowerCase();
         if (source.includes('aws') || source.includes('amazon')) {
           result.AWS += src.doc_count;
+          cloudLabeledCount += src.doc_count;
         } else if (source.includes('azure')) {
           result.Azure += src.doc_count;
+          cloudLabeledCount += src.doc_count;
         } else if (source.includes('gcp') || source.includes('google')) {
           result.GCP += src.doc_count;
+          cloudLabeledCount += src.doc_count;
+        } else if (source.includes('on_premise') || source.includes('on-premise') || source.includes('onpremise')) {
+          // Source explicitement marquée On Premise
+          result.On_Premise += src.doc_count;
         }
-        labeledCount += src.doc_count;
+        // Les autres sources non reconnues seront comptées via les agents
       }
 
       // Compter par nom d'agent
       const agents = bucket.by_agent?.buckets || [];
-      let totalFromAgents = 0;
+      let totalAgentCount = 0;
       
       for (const agent of agents) {
         const name = agent.key.toLowerCase();
         if (name.includes('aws') || name.includes('amazon')) {
-          result.AWS += agent.doc_count;
+          // Éviter le double comptage si déjà compté par source
+          if (cloudLabeledCount === 0) result.AWS += agent.doc_count;
         } else if (name.includes('azure')) {
-          result.Azure += agent.doc_count;
+          if (cloudLabeledCount === 0) result.Azure += agent.doc_count;
         } else if (name.includes('gcp') || name.includes('google')) {
-          result.GCP += agent.doc_count;
+          if (cloudLabeledCount === 0) result.GCP += agent.doc_count;
         } else {
-          totalFromAgents += agent.doc_count;
+          // Agent local (pas de pattern cloud)
+          totalAgentCount += agent.doc_count;
         }
       }
       
-      // On_Premise = alertes locales (sans labels cloud)
-      result.On_Premise = Math.max(0, totalFromAgents - labeledCount);
+      // On_Premise = alertes d'agents locaux non déjà comptées via labels
+      // Si des sources On_Premise explicites existent, ne pas ajouter les agents locaux
+      if (result.On_Premise === 0) {
+        result.On_Premise = totalAgentCount;
+      }
 
       return result;
     });
