@@ -93,7 +93,8 @@ const Charts = ({ timeSeriesData, providerDistribution }) => {
               style={{ fontSize: '0.85rem', fontWeight: '500' }}
               axisLine={false}
               tickLine={false}
-              tickFormatter={(value) => `${value / 1000}K`}
+              tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(1)}K` : value}
+              allowDecimals={false}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend 

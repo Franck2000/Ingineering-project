@@ -55,30 +55,59 @@ function App() {
     clearFilters
   } = useFilters();
 
+  // Calculer les options de filtrage basées sur timeRange
+  const getFilterOptions = () => {
+    const now = new Date();
+    if (timeRange.type === 'relative') {
+      return {
+        hours: Math.ceil(timeRange.minutes / 60),
+        minutes: timeRange.minutes,
+        fromDate: new Date(now.getTime() - timeRange.minutes * 60 * 1000).toISOString(),
+        toDate: now.toISOString()
+      };
+    } else if (timeRange.type === 'absolute') {
+      // Calculer les minutes entre les deux dates
+      const start = new Date(timeRange.start);
+      const end = new Date(timeRange.end);
+      const diffMinutes = Math.round((end.getTime() - start.getTime()) / (60 * 1000));
+      return {
+        minutes: diffMinutes,
+        fromDate: timeRange.start,
+        toDate: timeRange.end
+      };
+    }
+    return { 
+      hours: 24,
+      minutes: 1440,
+      fromDate: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+      toDate: now.toISOString()
+    };
+  };
+
   // Chargement des données avec les hooks personnalisés
   const { data: statistics, refetch: refetchStats } = useDataFetch(
-    () => dataService.getStatistics(),
-    []
+    () => dataService.getStatistics(getFilterOptions()),
+    [timeRange]
   );
 
-  const { data: timeSeriesData } = useDataFetch(
-    () => dataService.getTimeSeriesData(),
-    []
+  const { data: timeSeriesData, refetch: refetchTimeSeries } = useDataFetch(
+    () => dataService.getTimeSeriesData(getFilterOptions()),
+    [timeRange]
   );
 
-  const { data: providerDistribution } = useDataFetch(
-    () => dataService.getProviderDistribution(),
-    []
+  const { data: providerDistribution, refetch: refetchDistribution } = useDataFetch(
+    () => dataService.getProviderDistribution(getFilterOptions()),
+    [timeRange]
   );
 
-  const { data: impactedProviders } = useDataFetch(
-    () => dataService.getImpactedProviders(),
-    []
+  const { data: impactedProviders, refetch: refetchProviders } = useDataFetch(
+    () => dataService.getImpactedProviders(getFilterOptions()),
+    [timeRange]
   );
 
-  const { data: topServices } = useDataFetch(
-    () => dataService.getTopServices(),
-    []
+  const { data: topServices, refetch: refetchServices } = useDataFetch(
+    () => dataService.getTopServices(getFilterOptions()),
+    [timeRange]
   );
 
   // Pagination des alertes filtrées
@@ -107,15 +136,10 @@ function App() {
   useEffect(() => {
     const loadAlerts = async (isPolling = false) => {
       try {
-        // Calculer la période de temps
-        let fromDate;
-        if (timeRange.type === 'relative') {
-          fromDate = new Date(Date.now() - timeRange.minutes * 60 * 1000);
-        } else if (timeRange.type === 'absolute') {
-          fromDate = new Date(timeRange.start);
-        }
+        // Utiliser les mêmes options de filtrage que pour les autres données
+        const filterOptions = getFilterOptions();
         
-        const data = await dataService.getAlerts({ fromDate: fromDate?.toISOString() });
+        const data = await dataService.getAlerts(filterOptions);
         
         // Si c'est un polling, vérifier les nouvelles alertes
         if (isPolling) {
@@ -129,27 +153,18 @@ function App() {
           return; // Ne pas mettre à jour l'affichage lors du polling
         }
         
-        // Filtrer par période si nécessaire
-        let filteredData = data;
-        if (timeRange.type === 'absolute' && timeRange.end) {
-          const endDate = new Date(timeRange.end);
-          filteredData = data.filter(alert => {
-            const alertDate = new Date(alert.timestamp || alert.time);
-            return alertDate <= endDate;
-          });
-        }
-        
         // Chargement initial ou manuel : mettre à jour l'affichage
-        setFilteredAlerts(filteredData);
+        // Les données sont déjà filtrées par dataService.getAlerts()
+        setFilteredAlerts(data);
         setLastUpdate(new Date());
         setNewAlertsCount(0);
         setPendingAlerts([]);
         
         // Mettre à jour la référence des IDs
-        currentAlertsRef.current = new Set(filteredData.map(a => a.id));
+        currentAlertsRef.current = new Set(data.map(a => a.id));
         
         // Extraire les sources uniques des alertes
-        const sources = [...new Set(filteredData.map(alert => alert.environment).filter(Boolean))];
+        const sources = [...new Set(data.map(alert => alert.environment).filter(Boolean))];
         setAvailableSources(sources.sort());
       } catch (error) {
         console.error('Erreur chargement alertes:', error);
@@ -234,10 +249,17 @@ function App() {
   // Handler pour le refresh manuel
   const handleRefresh = async () => {
     dataService.invalidateCache();
-    const data = await dataService.getAlerts();
+    const filterOptions = getFilterOptions();
+    const data = await dataService.getAlerts(filterOptions);
     setFilteredAlerts(data);
     setLastUpdate(new Date());
+    
+    // Rafraîchir tous les graphiques et cartes
     refetchStats();
+    refetchTimeSeries();
+    refetchDistribution();
+    refetchProviders();
+    refetchServices();
   };
 
   // Si non authentifié, afficher la page de connexion

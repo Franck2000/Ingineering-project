@@ -25,10 +25,16 @@ class WazuhIndexerService {
 
   /**
    * Récupère les alertes avec pagination
+   * @param {Object} options - Options de requête
+   * @param {number} options.limit - Nombre max d'alertes (défaut: 100)
+   * @param {number} options.offset - Offset pour pagination
+   * @param {string} options.fromDate - Date de début ISO
+   * @param {string} options.toDate - Date de fin ISO
    */
-  async getAlerts({ limit = 100, offset = 0, ...filters } = {}) {
+  async getAlerts({ limit = 100, offset = 0, fromDate, toDate, ...otherFilters } = {}) {
+    // Construire la requête avec les filtres de date
     const query = {
-      query: this.#buildQuery(filters),
+      query: this.#buildQuery({ fromDate, toDate, ...otherFilters }),
       sort: [{ timestamp: { order: 'desc' } }],
       size: limit,
       from: offset
@@ -57,8 +63,12 @@ class WazuhIndexerService {
 
   /**
    * Récupère la distribution par sévérité
+   * @param {Object} filters - Filtres optionnels
+   * @param {string} filters.fromDate - Date de début ISO
+   * @param {string} filters.toDate - Date de fin ISO
    */
-  async getAlertsBySeverity() {
+  async getAlertsBySeverity(filters = {}) {
+    const query = this.#buildQuery(filters);
     const response = await this.#aggregate({
       severity: {
         range: {
@@ -71,7 +81,7 @@ class WazuhIndexerService {
           ]
         }
       }
-    });
+    }, query);
 
     return this.#bucketsToObject(response.severity?.buckets);
   }
@@ -159,8 +169,23 @@ class WazuhIndexerService {
   /**
    * Récupère la timeline par cloud provider
    * Utilise agent.labels.source et agent.name pour la classification
+   * @param {number} hours - Nombre d'heures à récupérer
    */
   async getTimelineByCloudProvider(hours = 24) {
+    // Adapter l'intervalle selon la période demandée
+    let interval;
+    if (hours > 168) { // Plus de 7 jours -> intervalle de 1 jour
+      interval = '1d';
+    } else if (hours > 48) { // Plus de 2 jours -> intervalle de 6h
+      interval = '6h';
+    } else if (hours > 24) { // Plus de 24h -> intervalle de 3h
+      interval = '3h';
+    } else if (hours > 6) { // Plus de 6h -> intervalle de 1h
+      interval = '1h';
+    } else { // Moins de 6h -> intervalle de 30min
+      interval = '30m';
+    }
+    
     const query = {
       size: 0,
       query: {
@@ -168,7 +193,7 @@ class WazuhIndexerService {
       },
       aggs: {
         timeline: {
-          date_histogram: { field: 'timestamp', fixed_interval: '1h' },
+          date_histogram: { field: 'timestamp', fixed_interval: interval },
           aggs: {
             by_source: { terms: { field: 'agent.labels.source', size: 20 } },
             by_agent: { terms: { field: 'agent.name', size: 30 } }
@@ -296,8 +321,16 @@ class WazuhIndexerService {
   /**
    * Construit une requête de filtre OpenSearch
    */
-  #buildQuery({ level, agentId, search, ruleGroup } = {}) {
+  #buildQuery({ level, agentId, search, ruleGroup, fromDate, toDate } = {}) {
     const must = [];
+
+    // Filtre par période temporelle
+    if (fromDate || toDate) {
+      const range = {};
+      if (fromDate) range.gte = fromDate;
+      if (toDate) range.lte = toDate;
+      must.push({ range: { timestamp: range } });
+    }
 
     if (level) {
       must.push({ range: { 'rule.level': { gte: level } } });

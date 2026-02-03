@@ -27,21 +27,25 @@ class DataService {
 
   /**
    * Récupère les alertes depuis l'indexer
+   * @param {Object} filters - Filtres à appliquer
+   * @param {string} filters.fromDate - Date de début ISO
+   * @param {string} filters.toDate - Date de fin ISO
    */
   async getAlerts(filters = {}) {
     if (!wazuhAuth.isAuthenticated()) {
       return [];
     }
 
-    const now = Date.now();
-    if (this.cachedAlerts && this.cacheTimestamp && (now - this.cacheTimestamp < this.cacheTimeout)) {
-      return this._filterAlerts(this.cachedAlerts, filters);
-    }
-
     try {
-      const alerts = await wazuhIndexer.getAlerts({ limit: 500 });
-      this.cachedAlerts = alerts;
-      this.cacheTimestamp = now;
+      // Passer les dates à l'indexer pour filtrer côté serveur
+      // Limite raisonnable pour OpenSearch
+      const alerts = await wazuhIndexer.getAlerts({ 
+        limit: 10000,
+        fromDate: filters.fromDate,
+        toDate: filters.toDate
+      });
+      
+      // Appliquer les filtres supplémentaires (provider, severity, etc.)
       return this._filterAlerts(alerts, filters);
     } catch (error) {
       console.error('Erreur récupération alertes:', error);
@@ -51,17 +55,22 @@ class DataService {
 
   /**
    * Récupère les statistiques
+   * Utilise des requêtes de comptage efficaces au lieu de récupérer toutes les alertes
+   * @param {Object} options - Options de filtrage
+   * @param {string} options.fromDate - Date de début ISO
+   * @param {string} options.toDate - Date de fin ISO
    */
-  async getStatistics() {
+  async getStatistics(options = {}) {
     if (!wazuhAuth.isAuthenticated()) {
       return this._getEmptyStats();
     }
 
     try {
-      const [agentStats, severityStats, totalCount] = await Promise.all([
-        wazuhApi.getAgentStats(),
-        wazuhIndexer.getAlertsBySeverity(),
-        wazuhIndexer.getAlertsCount()
+      // Utiliser les APIs de comptage efficaces d'OpenSearch
+      const [totalCount, severityStats, agentStats] = await Promise.all([
+        wazuhIndexer.getAlertsCount({ fromDate: options.fromDate, toDate: options.toDate }),
+        wazuhIndexer.getAlertsBySeverity({ fromDate: options.fromDate, toDate: options.toDate }),
+        wazuhApi.getAgentStats()
       ]);
 
       return {
@@ -90,20 +99,59 @@ class DataService {
 
   /**
    * Récupère les données temporelles par cloud provider
+   * @param {Object} options - Options de filtrage
+   * @param {number} options.hours - Nombre d'heures à récupérer (défaut: 24)
+   * @param {number} options.minutes - Nombre de minutes pour déterminer l'échelle
+   * @param {string} options.fromDate - Date de début ISO
+   * @param {string} options.toDate - Date de fin ISO
    */
-  async getTimeSeriesData() {
+  async getTimeSeriesData(options = {}) {
     if (!wazuhAuth.isAuthenticated()) {
       return [];
     }
 
-    try {
-      const timeline = await wazuhIndexer.getTimelineByCloudProvider(24);
-      
-      return timeline.map(bucket => ({
-        time: new Date(bucket.time).toLocaleTimeString('fr-FR', { 
+    const hours = options.hours || 24;
+    const minutes = options.minutes || hours * 60;
+    
+    // Déterminer le format de l'échelle de temps
+    const formatTime = (date) => {
+      const d = new Date(date);
+      if (minutes > 1440) { // Plus de 24h -> afficher jour + heure
+        return d.toLocaleDateString('fr-FR', { 
+          day: '2-digit', 
+          month: '2-digit',
+          hour: '2-digit'
+        }).replace(',', '');
+      } else if (minutes > 360) { // Plus de 6h -> afficher heure
+        return d.toLocaleTimeString('fr-FR', { 
           hour: '2-digit', 
           minute: '2-digit' 
-        }),
+        });
+      } else { // Moins de 6h -> afficher heure:minute
+        return d.toLocaleTimeString('fr-FR', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
+      }
+    };
+
+    try {
+      const timeline = await wazuhIndexer.getTimelineByCloudProvider(hours);
+      
+      // Filtrer par dates si spécifiées
+      let filteredTimeline = timeline;
+      if (options.fromDate) {
+        const fromTime = new Date(options.fromDate).getTime();
+        const toTime = options.toDate ? new Date(options.toDate).getTime() : Date.now();
+        filteredTimeline = timeline.filter(bucket => {
+          const bucketTime = new Date(bucket.time).getTime();
+          return bucketTime >= fromTime && bucketTime <= toTime;
+        });
+      }
+      
+      return filteredTimeline.map(bucket => ({
+        time: formatTime(bucket.time),
+        timestamp: bucket.time,
         AWS: bucket.AWS || 0,
         Azure: bucket.Azure || 0,
         GCP: bucket.GCP || 0,
@@ -113,12 +161,10 @@ class DataService {
       console.error('Erreur timeline:', error);
       // Fallback sur timeline simple
       try {
-        const timeline = await wazuhIndexer.getAlertsTimeline(24);
+        const timeline = await wazuhIndexer.getAlertsTimeline(hours);
         return timeline.map(bucket => ({
-          time: new Date(bucket.key_as_string || bucket.key).toLocaleTimeString('fr-FR', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          }),
+          time: formatTime(bucket.key_as_string || bucket.key),
+          timestamp: bucket.key_as_string || bucket.key,
           AWS: 0,
           Azure: 0,
           GCP: 0,
@@ -133,8 +179,9 @@ class DataService {
   /**
    * Récupère la distribution des cloud providers
    * AWS, Azure, GCP, On_Premise (local)
+   * @param {Object} options - Options de filtrage
    */
-  async getProviderDistribution() {
+  async getProviderDistribution(options = {}) {
     if (!wazuhAuth.isAuthenticated()) {
       return [];
     }
@@ -148,7 +195,15 @@ class DataService {
     };
 
     try {
-      const distribution = await wazuhIndexer.getAlertsByCloudProvider();
+      // Récupérer les alertes filtrées par période
+      const alerts = await this.getAlerts(options);
+      
+      // Calculer la distribution à partir des alertes filtrées
+      const distribution = {};
+      alerts.forEach(alert => {
+        const provider = alert.provider || 'On Premise';
+        distribution[provider] = (distribution[provider] || 0) + 1;
+      });
       
       return Object.entries(distribution)
         .filter(([_, value]) => value > 0)
@@ -166,25 +221,27 @@ class DataService {
 
   /**
    * Récupère les providers impactés
+   * @param {Object} options - Options de filtrage
    */
-  async getImpactedProviders() {
+  async getImpactedProviders(options = {}) {
     if (!wazuhAuth.isAuthenticated()) {
       return [];
     }
 
-    const alerts = await this.getAlerts();
+    const alerts = await this.getAlerts(options);
     return [...new Set(alerts.map(alert => alert.provider).filter(Boolean))];
   }
 
   /**
    * Récupère les services principaux
+   * @param {Object} options - Options de filtrage
    */
-  async getTopServices() {
+  async getTopServices(options = {}) {
     if (!wazuhAuth.isAuthenticated()) {
       return [];
     }
 
-    const alerts = await this.getAlerts();
+    const alerts = await this.getAlerts(options);
     const serviceCounts = alerts.reduce((acc, alert) => {
       acc[alert.service] = (acc[alert.service] || 0) + 1;
       return acc;
@@ -197,7 +254,8 @@ class DataService {
   }
 
   /**
-   * Filtre les alertes selon les critères
+   * Filtre les alertes selon les critères (filtrage client pour les filtres UI)
+   * Note: Le filtrage par date est fait côté serveur
    */
   _filterAlerts(alerts, filters) {
     let filtered = [...alerts];
