@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, Monitor, Zap, Filter } from 'lucide-react';
+import { ChevronDown, Monitor, Zap, Filter, X } from 'lucide-react';
 import { CLOUD_PROVIDERS, QUICK_FILTERS, SERVICES, SEVERITIES, REGIONS } from '../constants';
 
 // Style commun pour les selects (DRY) - Thème Cyber
@@ -14,6 +14,7 @@ const SELECT_STYLE = {
 /**
  * Composant Sidebar - Gère l'affichage des filtres
  * Thème Cyber Security - Violet/Rose
+ * Responsive: drawer sur mobile, fixe sur desktop
  */
 const Sidebar = ({
   filters,
@@ -24,17 +25,47 @@ const Sidebar = ({
   onRegionChange,
   onSourceChange,
   onClearFilters,
-  availableSources = []
+  availableSources = [],
+  isOpen = false,
+  onClose = () => {}
 }) => {
   return (
-    <div className="w-80 bg-surface-primary/95 backdrop-blur-md border-r border-primary-500/20 p-6 flex flex-col gap-7 h-screen overflow-y-auto scrollbar-thin sticky top-0 transition-colors duration-300">
-      {/* Title avec icône */}
-      <div className="flex items-center gap-2">
-        <Filter size={18} className="text-primary-400" />
-        <h2 className="text-base font-bold text-primary-300 uppercase tracking-wide">
-          Filters
-        </h2>
-      </div>
+    <>
+      {/* Sidebar - Hidden on mobile, visible on lg+ */}
+      <div className={`
+        fixed lg:static inset-y-0 left-0 z-50
+        w-72 lg:w-80 
+        bg-surface-primary/95 backdrop-blur-md 
+        border-r border-primary-500/20 
+        p-4 lg:p-6 
+        flex flex-col gap-5 lg:gap-7 
+        h-screen overflow-y-auto scrollbar-thin 
+        transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        {/* Header mobile avec bouton fermer */}
+        <div className="flex items-center justify-between lg:hidden mb-2">
+          <div className="flex items-center gap-2">
+            <Filter size={18} className="text-primary-400" />
+            <h2 className="text-base font-bold text-primary-300 uppercase tracking-wide">
+              Filters
+            </h2>
+          </div>
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-primary-500/20 rounded-lg transition-colors"
+          >
+            <X size={20} className="text-primary-300" />
+          </button>
+        </div>
+        
+        {/* Title desktop */}
+        <div className="hidden lg:flex items-center gap-2">
+          <Filter size={18} className="text-primary-400" />
+          <h2 className="text-base font-bold text-primary-300 uppercase tracking-wide">
+            Filters
+          </h2>
+        </div>
 
       {/* Quick Filters */}
       <div className="flex gap-2">
@@ -185,12 +216,16 @@ const Sidebar = ({
 
       {/* Clear Filters Button */}
       <button
-        onClick={onClearFilters}
+        onClick={() => {
+          onClearFilters();
+          onClose();
+        }}
         className="btn-secondary mt-auto border-red-500/30 text-red-400 hover:bg-red-500/10 hover:border-red-400/50"
       >
         Clear Filters
       </button>
-    </div>
+      </div>
+    </>
   );
 };
 

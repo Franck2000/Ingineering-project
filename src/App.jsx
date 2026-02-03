@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import StatsCards from './components/StatsCards';
 import Charts from './components/Charts';
 import AlertsTable from './components/AlertsTable';
 import LoginPage from './components/LoginPage';
+import NewAlertsToast from './components/NewAlertsToast';
 import { useFilters } from './hooks/useFilters';
 import { usePagination } from './hooks/usePagination';
 import { useDataFetch } from './hooks/useDataFetch';
@@ -31,10 +32,16 @@ function App() {
 
   // État local pour les données
   const [filteredAlerts, setFilteredAlerts] = useState([]);
+  const [pendingAlerts, setPendingAlerts] = useState([]); // Alertes en attente
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [availableSources, setAvailableSources] = useState([]);
   const [isLive, setIsLive] = useState(true); // Mode live activé par défaut
   const [newAlertsCount, setNewAlertsCount] = useState(0); // Compteur d'alertes en attente
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Sidebar mobile
+  const [timeRange, setTimeRange] = useState({ type: 'relative', value: '24h', minutes: 1440, label: 'Last 24 hours' }); // Période temporelle
+  
+  // Référence pour garder trace des IDs actuels
+  const currentAlertsRef = useRef(new Set());
 
   // Gestion des filtres
   const {
@@ -100,24 +107,49 @@ function App() {
   useEffect(() => {
     const loadAlerts = async (isPolling = false) => {
       try {
-        const data = await dataService.getAlerts();
-        
-        // Si c'est un polling et mode pause, compter les nouvelles alertes
-        if (isPolling && !isLive) {
-          const currentIds = new Set(filteredAlerts.map(a => a.id));
-          const newAlerts = data.filter(a => !currentIds.has(a.id));
-          if (newAlerts.length > 0) {
-            setNewAlertsCount(prev => prev + newAlerts.length);
-          }
-          return; // Ne pas mettre à jour les données en mode pause
+        // Calculer la période de temps
+        let fromDate;
+        if (timeRange.type === 'relative') {
+          fromDate = new Date(Date.now() - timeRange.minutes * 60 * 1000);
+        } else if (timeRange.type === 'absolute') {
+          fromDate = new Date(timeRange.start);
         }
         
-        setFilteredAlerts(data);
+        const data = await dataService.getAlerts({ fromDate: fromDate?.toISOString() });
+        
+        // Si c'est un polling, vérifier les nouvelles alertes
+        if (isPolling) {
+          const newAlerts = data.filter(a => !currentAlertsRef.current.has(a.id));
+          
+          if (newAlerts.length > 0) {
+            // Stocker les nouvelles alertes en attente (ne pas rafraîchir l'affichage)
+            setPendingAlerts(prev => [...newAlerts, ...prev]);
+            setNewAlertsCount(prev => prev + newAlerts.length);
+          }
+          return; // Ne pas mettre à jour l'affichage lors du polling
+        }
+        
+        // Filtrer par période si nécessaire
+        let filteredData = data;
+        if (timeRange.type === 'absolute' && timeRange.end) {
+          const endDate = new Date(timeRange.end);
+          filteredData = data.filter(alert => {
+            const alertDate = new Date(alert.timestamp || alert.time);
+            return alertDate <= endDate;
+          });
+        }
+        
+        // Chargement initial ou manuel : mettre à jour l'affichage
+        setFilteredAlerts(filteredData);
         setLastUpdate(new Date());
-        setNewAlertsCount(0); // Reset le compteur
+        setNewAlertsCount(0);
+        setPendingAlerts([]);
+        
+        // Mettre à jour la référence des IDs
+        currentAlertsRef.current = new Set(filteredData.map(a => a.id));
         
         // Extraire les sources uniques des alertes
-        const sources = [...new Set(data.map(alert => alert.environment).filter(Boolean))];
+        const sources = [...new Set(filteredData.map(alert => alert.environment).filter(Boolean))];
         setAvailableSources(sources.sort());
       } catch (error) {
         console.error('Erreur chargement alertes:', error);
@@ -128,7 +160,7 @@ function App() {
     loadAlerts(false);
 
     // Polling automatique pour le temps réel (désactivé si interval = 0)
-    if (POLLING_CONFIG.ALERTS_INTERVAL > 0) {
+    if (POLLING_CONFIG.ALERTS_INTERVAL > 0 && isLive) {
       const pollingInterval = setInterval(() => {
         dataService.invalidateCache(); // Forcer le rafraîchissement
         loadAlerts(true); // C'est un polling
@@ -137,7 +169,37 @@ function App() {
       // Cleanup à la destruction du composant
       return () => clearInterval(pollingInterval);
     }
-  }, [isLive]); // Dépendance sur isLive pour réagir au changement de mode
+  }, [isLive, timeRange]); // Dépendance sur isLive et timeRange pour réagir aux changements
+
+  // Fonction pour charger les alertes en attente
+  const loadPendingAlerts = () => {
+    if (pendingAlerts.length > 0) {
+      // Fusionner les alertes en attente avec les alertes actuelles
+      const mergedAlerts = [...pendingAlerts, ...filteredAlerts];
+      // Dédupliquer et trier par date
+      const uniqueAlerts = Array.from(
+        new Map(mergedAlerts.map(a => [a.id, a])).values()
+      ).sort((a, b) => new Date(b.timestamp || b.time) - new Date(a.timestamp || a.time));
+      
+      setFilteredAlerts(uniqueAlerts);
+      setLastUpdate(new Date());
+      
+      // Mettre à jour la référence des IDs
+      currentAlertsRef.current = new Set(uniqueAlerts.map(a => a.id));
+      
+      // Reset
+      setPendingAlerts([]);
+      setNewAlertsCount(0);
+    }
+  };
+
+  // Ignorer les alertes en attente
+  const dismissPendingAlerts = () => {
+    // Ajouter les IDs des alertes ignorées à la référence pour ne pas les recompter
+    pendingAlerts.forEach(a => currentAlertsRef.current.add(a.id));
+    setPendingAlerts([]);
+    setNewAlertsCount(0);
+  };
 
   // Application des filtres
   useEffect(() => {
@@ -186,9 +248,17 @@ function App() {
   return (
     <div className="flex min-h-screen transition-colors duration-300 relative overflow-hidden" style={{background: 'linear-gradient(135deg, #1a0a2e 0%, #2d1f4a 50%, #1e1033 100%)'}}>
       {/* Decorative orbs */}
-      <div className="cyber-orb w-96 h-96 -top-48 -right-48 opacity-40"></div>
-      <div className="cyber-orb-pink w-80 h-80 bottom-20 left-1/4 opacity-30"></div>
-      <div className="cyber-orb w-64 h-64 top-1/3 right-1/4 opacity-20"></div>
+      <div className="cyber-orb w-96 h-96 -top-48 -right-48 opacity-40 hidden md:block"></div>
+      <div className="cyber-orb-pink w-80 h-80 bottom-20 left-1/4 opacity-30 hidden md:block"></div>
+      <div className="cyber-orb w-64 h-64 top-1/3 right-1/4 opacity-20 hidden md:block"></div>
+      
+      {/* Overlay mobile pour fermer la sidebar */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
       
       {/* Sidebar */}
       <Sidebar
@@ -201,10 +271,12 @@ function App() {
         onSourceChange={setSource}
         onClearFilters={clearFilters}
         availableSources={availableSources}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
 
       {/* Main Content */}
-      <div className="flex-1 p-8 overflow-y-auto relative z-10">
+      <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto relative z-10">
         {/* Header */}
         <Header 
           onRefresh={handleRefresh} 
@@ -216,6 +288,9 @@ function App() {
           isLive={isLive}
           onToggleLive={() => setIsLive(!isLive)}
           newAlertsCount={newAlertsCount}
+          onMenuClick={() => setSidebarOpen(true)}
+          timeRange={timeRange}
+          onTimeRangeChange={setTimeRange}
         />
 
         {/* Stats Cards */}
@@ -246,6 +321,13 @@ function App() {
           hasPreviousPage={hasPreviousPage}
         />
       </div>
+
+      {/* Toast notification pour les nouvelles alertes */}
+      <NewAlertsToast 
+        count={newAlertsCount}
+        onLoadAlerts={loadPendingAlerts}
+        onDismiss={dismissPendingAlerts}
+      />
     </div>
   );
 }

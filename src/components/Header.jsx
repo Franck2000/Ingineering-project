@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, User, Moon, Sun, LogOut, RefreshCw, Pause, Play } from 'lucide-react';
+import { ChevronDown, User, Moon, Sun, LogOut, RefreshCw, Pause, Play, Menu } from 'lucide-react';
 import logo from '../assets/logo.png';
+import DateRangePicker from './DateRangePicker';
 
 /**
  * Composant Header - Affiche le titre et les actions du dashboard
  * Thème Cyber Security - Unicorns
  */
-const Header = ({ onRefresh, darkMode, toggleDarkMode, onLogout, username, lastUpdate, isLive, onToggleLive, newAlertsCount }) => {
+const Header = ({ onRefresh, darkMode, toggleDarkMode, onLogout, username, lastUpdate, isLive, onToggleLive, newAlertsCount, onMenuClick, timeRange, onTimeRangeChange }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [timeSinceUpdate, setTimeSinceUpdate] = useState('');
@@ -43,12 +44,20 @@ const Header = ({ onRefresh, darkMode, toggleDarkMode, onLogout, username, lastU
   };
 
   return (
-    <div className="flex justify-between items-center mb-8">
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 md:mb-8">
+      <div className="flex items-center gap-3 md:gap-4 w-full lg:w-auto justify-between lg:justify-start">
+        {/* Menu burger mobile */}
+        <button
+          onClick={onMenuClick}
+          className="lg:hidden p-2 bg-surface-secondary/80 border border-primary-500/30 rounded-lg"
+        >
+          <Menu size={24} className="text-primary-300" />
+        </button>
+        
         {/* Logo Unicorns */}
-        <div className="flex items-center gap-3">
-          <img src={logo} alt="Unicorns" className="w-12 h-12 object-contain drop-shadow-lg" style={{filter: 'drop-shadow(0 4px 20px rgba(59, 130, 246, 0.5))'}} />
-          <h1 className="text-2xl font-extrabold text-gradient">
+        <div className="flex items-center gap-2 md:gap-3">
+          <img src={logo} alt="Unicorns" className="w-10 h-10 md:w-12 md:h-12 object-contain drop-shadow-lg" style={{filter: 'drop-shadow(0 4px 20px rgba(59, 130, 246, 0.5))'}} />
+          <h1 className="text-lg md:text-2xl font-extrabold text-gradient hidden sm:block">
             Unicorns Security
           </h1>
         </div>
@@ -79,34 +88,40 @@ const Header = ({ onRefresh, darkMode, toggleDarkMode, onLogout, username, lastU
         </button>
       </div>
       
-      <div className="flex gap-3 items-center">
+      <div className="flex gap-2 md:gap-3 items-center flex-wrap w-full lg:w-auto justify-end">
         {/* Affichage de la dernière mise à jour */}
         {lastUpdate && (
-          <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 bg-surface-secondary/60 backdrop-blur-sm border border-primary-500/20 rounded-lg">
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 bg-surface-secondary/60 backdrop-blur-sm border border-primary-500/20 rounded-lg">
             <span>Mis à jour {timeSinceUpdate}</span>
           </div>
         )}
-        <button className="btn-secondary">Last 24h</button>
+        
+        {/* Sélecteur de période */}
+        <DateRangePicker 
+          value={timeRange?.value || '24h'} 
+          onChange={onTimeRangeChange} 
+        />
+        
         <button 
           onClick={handleRefreshClick} 
-          className="btn-primary flex items-center gap-2"
+          className="btn-primary flex items-center gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-4"
           disabled={isRefreshing}
         >
-          <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
-          Refresh
+          <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
+          <span className="hidden sm:inline">Refresh</span>
         </button>
-        <button className="btn-secondary">Save View</button>
+        <button className="btn-secondary text-xs md:text-sm px-2 md:px-4 hidden md:block">Save View</button>
         
         {/* Dark Mode Toggle - Style cyber */}
         <button
           onClick={toggleDarkMode}
-          className="w-10 h-10 flex items-center justify-center bg-surface-secondary/80 border border-primary-500/30 rounded-lg cursor-pointer hover:bg-surface-tertiary hover:border-primary-400/50 transition-all backdrop-blur-sm"
+          className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-surface-secondary/80 border border-primary-500/30 rounded-lg cursor-pointer hover:bg-surface-tertiary hover:border-primary-400/50 transition-all backdrop-blur-sm"
           title={darkMode ? 'Mode clair' : 'Mode sombre'}
         >
           {darkMode ? (
-            <Sun size={20} className="text-yellow-400" />
+            <Sun size={18} className="text-yellow-400" />
           ) : (
-            <Moon size={20} className="text-primary-300" />
+            <Moon size={18} className="text-primary-300" />
           )}
         </button>
         
@@ -114,18 +129,18 @@ const Header = ({ onRefresh, darkMode, toggleDarkMode, onLogout, username, lastU
         <div className="relative">
           <div 
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center gap-2 px-4 py-2 bg-surface-secondary/80 border border-primary-500/30 rounded-lg cursor-pointer hover:bg-surface-tertiary hover:border-primary-400/50 transition-all backdrop-blur-sm"
+            className="flex items-center gap-1 md:gap-2 px-2 md:px-4 py-2 bg-surface-secondary/80 border border-primary-500/30 rounded-lg cursor-pointer hover:bg-surface-tertiary hover:border-primary-400/50 transition-all backdrop-blur-sm"
           >
-            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{background: 'linear-gradient(to bottom right, #a855f7, #ec4899)'}}>
-              <User size={18} className="text-white" />
+            <div className="w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center" style={{background: 'linear-gradient(to bottom right, #a855f7, #ec4899)'}}>
+              <User size={16} className="text-white" />
             </div>
-            <div className="flex flex-col items-start">
+            <div className="hidden md:flex flex-col items-start">
               <div className="text-sm font-semibold text-white">
                 {username || 'Admin'}
               </div>
               <div className="text-xs text-gray-400">Administrator</div>
             </div>
-            <ChevronDown size={16} className={`text-gray-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+            <ChevronDown size={14} className={`text-gray-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
           </div>
 
           {/* Dropdown Menu */}

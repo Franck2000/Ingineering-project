@@ -27,6 +27,7 @@ const flattenObject = (obj, prefix = '') => {
 /**
  * Composant AdvancedSearch - Recherche avec auto-complétion par champs
  * Syntaxe: champ:valeur OU recherche libre
+ * Conserve les filtres même lors du refresh des données
  */
 const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (ex: agent.name:wazuh-server)" }) => {
   const [query, setQuery] = useState('');
@@ -36,6 +37,14 @@ const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (
   const [activeFilters, setActiveFilters] = useState([]);
   const inputRef = useRef(null);
   const suggestionsRef = useRef(null);
+  
+  // Référence pour garder les filtres actuels accessibles dans l'effet
+  const filtersRef = useRef({ activeFilters: [], query: '' });
+  
+  // Mettre à jour la référence quand les filtres changent
+  useEffect(() => {
+    filtersRef.current = { activeFilters, query };
+  }, [activeFilters, query]);
 
   // Extraire tous les champs et valeurs uniques des alertes
   const fieldIndex = useMemo(() => {

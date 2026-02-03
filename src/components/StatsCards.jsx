@@ -7,7 +7,7 @@ import { AlertTriangle, Activity, Server, Layers } from 'lucide-react';
  */
 const StatsCards = ({ statistics, impactedProviders, topServices }) => {
   return (
-    <div className="grid grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
       {/* Total Alerts */}
       <div className="card-glow group">
         <div className="flex items-center gap-2 mb-4">

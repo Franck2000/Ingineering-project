@@ -19,8 +19,10 @@ const WAZUH_SERVERS = {
 export default defineConfig({
   plugins: [react()],
   server: {
+    
     port:3000,
     host :'0.0.0.0',
+
     open: true,
     proxy: {
       // Proxy vers l'API Wazuh Manager

@@ -69,16 +69,16 @@ const Charts = ({ timeSeriesData, providerDistribution }) => {
   };
 
   return (
-    <div className="grid grid-cols-3 gap-6 mb-8">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
       {/* Stacked Bar Chart */}
-      <div className="col-span-2 card">
-        <div className="flex items-center gap-2 mb-6">
+      <div className="lg:col-span-2 card">
+        <div className="flex items-center gap-2 mb-4 md:mb-6">
           <TrendingUp size={20} className="text-primary-400" />
-          <span className="text-lg font-bold text-gradient">
+          <span className="text-base md:text-lg font-bold text-gradient">
             Alerts Over Time
           </span>
         </div>
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={250}>
           <BarChart data={timeSeriesData}>
             <CartesianGrid strokeDasharray="3 3" stroke={CYBER_COLORS.grid} vertical={false} />
             <XAxis
@@ -117,18 +117,18 @@ const Charts = ({ timeSeriesData, providerDistribution }) => {
       <div className="card">
         <div className="flex items-center gap-2 mb-4">
           <PieChartIcon size={20} className="text-cyber-pink" />
-          <span className="text-lg font-bold text-gradient">
+          <span className="text-base md:text-lg font-bold text-gradient">
             Distribution
           </span>
         </div>
-        <ResponsiveContainer width="100%" height={340}>
+        <ResponsiveContainer width="100%" height={280}>
           <PieChart>
             <Pie
               data={providerDistribution}
               cx="50%"
               cy="45%"
-              innerRadius={70}
-              outerRadius={110}
+              innerRadius={50}
+              outerRadius={85}
               paddingAngle={2}
               dataKey="value"
               label={renderCustomLabel}
