@@ -110,7 +110,6 @@ const Header = ({ onRefresh, darkMode, toggleDarkMode, onLogout, username, lastU
           <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
           <span className="hidden sm:inline">Refresh</span>
         </button>
-        <button className="btn-secondary text-xs md:text-sm px-2 md:px-4 hidden md:block">Save View</button>
         
         {/* Dark Mode Toggle - Style cyber */}
         <button

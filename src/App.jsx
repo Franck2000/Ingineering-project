@@ -137,12 +137,16 @@ function App() {
     resetPage
   } = usePagination(filteredAlerts);
 
-  // Appliquer le mode sombre au document
+  // Appliquer le mode sombre/clair au document
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark-mode');
+      document.body.classList.remove('light-mode');
     } else {
       document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark-mode');
+      document.body.classList.add('light-mode');
     }
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
   }, [darkMode]);
@@ -274,11 +278,28 @@ function App() {
   }
 
   return (
-    <div className="flex min-h-screen transition-colors duration-300 relative overflow-hidden" style={{background: 'linear-gradient(135deg, #1a0a2e 0%, #2d1f4a 50%, #1e1033 100%)'}}>
-      {/* Decorative orbs */}
-      <div className="cyber-orb w-96 h-96 -top-48 -right-48 opacity-40 hidden md:block"></div>
-      <div className="cyber-orb-pink w-80 h-80 bottom-20 left-1/4 opacity-30 hidden md:block"></div>
-      <div className="cyber-orb w-64 h-64 top-1/3 right-1/4 opacity-20 hidden md:block"></div>
+    <div 
+      className="flex min-h-screen transition-colors duration-300 relative overflow-hidden"
+      style={darkMode 
+        ? {background: 'linear-gradient(135deg, #1a0a2e 0%, #2d1f4a 50%, #1e1033 100%)'}
+        : {background: 'linear-gradient(135deg, #f8fafc 0%, #ede9fe 50%, #fce7f3 100%)'}
+      }
+    >
+      {/* Decorative orbs - only in dark mode */}
+      {darkMode && (
+        <>
+          <div className="cyber-orb w-96 h-96 -top-48 -right-48 opacity-40 hidden md:block"></div>
+          <div className="cyber-orb-pink w-80 h-80 bottom-20 left-1/4 opacity-30 hidden md:block"></div>
+          <div className="cyber-orb w-64 h-64 top-1/3 right-1/4 opacity-20 hidden md:block"></div>
+        </>
+      )}
+      {/* Light mode decorative elements */}
+      {!darkMode && (
+        <>
+          <div className="absolute w-96 h-96 -top-48 -right-48 opacity-30 blur-3xl hidden md:block" style={{background: 'radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%)'}}></div>
+          <div className="absolute w-80 h-80 bottom-20 left-1/4 opacity-20 blur-3xl hidden md:block" style={{background: 'radial-gradient(circle, rgba(236, 72, 153, 0.2) 0%, transparent 70%)'}}></div>
+        </>
+      )}
       
       {/* Overlay mobile pour fermer la sidebar */}
       {sidebarOpen && (
