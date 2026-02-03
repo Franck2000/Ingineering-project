@@ -60,31 +60,31 @@ const AgentMonitoring = ({ onAgentSelect }) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Graphiques donut */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <DonutChart data={chartData.statusData} title="AGENTS BY STATUS" />
         <DonutChart data={chartData.osData} title="TOP 5 OS" />
-        <DonutChart data={chartData.groupData} title="TOP 5 GROUPS" />
+        <DonutChart data={chartData.groupData} title="TOP 5 GROUPS" className="sm:col-span-2 lg:col-span-1" />
       </div>
 
       {/* Section tableau */}
       <div className="card">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="flex items-center gap-3">
             <Server className="w-5 h-5 text-primary-400" />
-            <h2 className="text-lg font-bold text-gradient">Agents ({totalAgents})</h2>
+            <h2 className="text-base sm:text-lg font-bold text-gradient">Agents ({totalAgents})</h2>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button onClick={refresh} className="btn-secondary flex items-center gap-2">
-              <RefreshCw size={16} />
-              <span>Refresh</span>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button onClick={refresh} className="btn-secondary flex items-center gap-2 text-xs sm:text-sm px-3 sm:px-4 py-2">
+              <RefreshCw size={14} className="sm:w-4 sm:h-4" />
+              <span className="hidden xs:inline">Refresh</span>
             </button>
-            <button className="btn-secondary flex items-center gap-2">
-              <Download size={16} />
-              <span>Export</span>
+            <button className="btn-secondary flex items-center gap-2 text-xs sm:text-sm px-3 sm:px-4 py-2">
+              <Download size={14} className="sm:w-4 sm:h-4" />
+              <span className="hidden xs:inline">Export</span>
             </button>
           </div>
         </div>

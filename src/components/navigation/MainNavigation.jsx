@@ -164,6 +164,7 @@ const MenuItem = ({ item, isActive, activeSubItem, onSelect, isExpanded, onToggl
 /**
  * Composant MainNavigation - Panneau latéral avec toggle Menu/Filtres
  * Un seul panneau qui affiche soit le menu, soit les filtres
+ * Responsive: Drawer mobile avec overlay
  */
 const MainNavigation = ({ 
   activePage, 
@@ -172,7 +173,10 @@ const MainNavigation = ({
   panelMode = PANEL_MODE.MENU,
   onPanelModeChange,
   // Props pour les filtres (passées au composant Filters intégré)
-  filtersComponent
+  filtersComponent,
+  // Props pour le mode mobile
+  isMobileOpen = false,
+  onMobileClose
 }) => {
   const [expandedItems, setExpandedItems] = useState(['home', 'agents-management']);
 
@@ -186,24 +190,52 @@ const MainNavigation = ({
 
   const handleSelect = (pageId, parentId = null) => {
     onNavigate(pageId, parentId);
+    // Fermer le menu mobile après sélection
+    if (onMobileClose) {
+      onMobileClose();
+    }
   };
 
   const isMenuMode = panelMode === PANEL_MODE.MENU;
 
   return (
-    <nav className="sticky top-0 left-0 z-50 h-screen w-72 flex-shrink-0 bg-surface-primary/95 backdrop-blur-md border-r border-primary-500/20 flex flex-col">
-      {/* Header avec logo */}
-      <div className="p-4 border-b border-primary-500/20">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-pink-500 flex items-center justify-center flex-shrink-0">
-            <Shield size={24} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-gradient">Unicorns</h1>
-            <p className="text-xs text-gray-500">Security Platform</p>
+    <>
+      {/* Overlay mobile - fond sombre quand le menu est ouvert */}
+      {isMobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          onClick={onMobileClose}
+        />
+      )}
+      
+      <nav className={`
+        fixed lg:sticky top-0 left-0 z-50 h-screen w-72 flex-shrink-0 
+        bg-surface-primary/95 backdrop-blur-md border-r border-primary-500/20 flex flex-col
+        transform transition-transform duration-300 ease-in-out
+        ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        {/* Header avec logo + bouton fermer mobile */}
+        <div className="p-4 border-b border-primary-500/20">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                <Shield size={24} className="text-white" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-gradient">Unicorns</h1>
+                <p className="text-xs text-gray-500">Security Platform</p>
+              </div>
+            </div>
+            
+            {/* Bouton fermer mobile */}
+            <button
+              onClick={onMobileClose}
+              className="lg:hidden p-2 rounded-lg hover:bg-surface-secondary text-gray-400 hover:text-white transition-colors"
+            >
+              <X size={20} />
+            </button>
           </div>
         </div>
-      </div>
 
       {/* Toggle buttons - Bascule entre Menu et Filtres */}
       <div className="p-2 border-b border-primary-500/20 flex gap-2">
@@ -265,6 +297,7 @@ const MainNavigation = ({
         )}
       </div>
     </nav>
+    </>
   );
 };
 

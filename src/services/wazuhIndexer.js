@@ -8,7 +8,8 @@
 import { 
   API_CONFIG, 
   mapRuleLevelToSeverity, 
-  detectCloudProvider 
+  detectCloudProvider,
+  detectService
 } from '../config/api.config';
 
 const { baseUrl, credentials, indices } = API_CONFIG.WAZUH_INDEXER;
@@ -94,6 +95,138 @@ class WazuhIndexerService {
       agents: { terms: { field: 'agent.name', size } }
     });
     return response.agents?.buckets || [];
+  }
+
+  /**
+   * Récupère les services disponibles depuis les logs
+   * Analyse data.aws.source, data.aws.eventSource, rule.groups
+   */
+  async getAvailableServices(filters = {}) {
+    const query = this.#buildQuery(filters);
+    
+    // Agrégations multiples pour détecter les services
+    const response = await this.#request(`/${indices.alerts}/_search`, {
+      method: 'POST',
+      body: JSON.stringify({
+        size: 0,
+        query,
+        aggs: {
+          aws_sources: { terms: { field: 'data.aws.source', size: 50 } },
+          aws_event_sources: { terms: { field: 'data.aws.eventSource', size: 50 } },
+          rule_groups: { terms: { field: 'rule.groups', size: 50 } }
+        }
+      })
+    });
+
+    const services = new Set();
+    const aggs = response.aggregations || {};
+
+    // Extraire les services AWS depuis data.aws.source
+    (aggs.aws_sources?.buckets || []).forEach(b => {
+      const serviceName = this.#mapSourceToService(b.key);
+      if (serviceName) services.add(serviceName);
+    });
+
+    // Extraire les services depuis data.aws.eventSource
+    (aggs.aws_event_sources?.buckets || []).forEach(b => {
+      const serviceName = this.#mapEventSourceToService(b.key);
+      if (serviceName) services.add(serviceName);
+    });
+
+    // Extraire les services depuis rule.groups
+    (aggs.rule_groups?.buckets || []).forEach(b => {
+      const serviceName = this.#mapGroupToService(b.key);
+      if (serviceName) services.add(serviceName);
+    });
+
+    return [...services].sort();
+  }
+
+  /**
+   * Mappe data.aws.source vers un nom de service
+   */
+  #mapSourceToService(source) {
+    const sourceMap = {
+      'cloudtrail': 'CloudTrail',
+      'guardduty': 'GuardDuty',
+      'securityhub': 'Security Hub',
+      'config': 'AWS Config',
+      'vpcflow': 'VPC Flow Logs',
+      'macie': 'Macie',
+      'inspector': 'Inspector'
+    };
+    return sourceMap[source?.toLowerCase()] || null;
+  }
+
+  /**
+   * Mappe data.aws.eventSource vers un nom de service
+   */
+  #mapEventSourceToService(eventSource) {
+    if (!eventSource) return null;
+    const lower = eventSource.toLowerCase();
+    
+    // Extraire le nom du service (ex: s3.amazonaws.com -> S3)
+    const match = lower.match(/^([a-z0-9-]+)\.amazonaws\.com/);
+    if (match) {
+      const serviceMap = {
+        's3': 'S3',
+        'ec2': 'EC2',
+        'iam': 'IAM',
+        'lambda': 'Lambda',
+        'rds': 'RDS',
+        'kms': 'KMS',
+        'sts': 'STS',
+        'organizations': 'Organizations',
+        'cloudtrail': 'CloudTrail',
+        'config': 'AWS Config',
+        'guardduty': 'GuardDuty',
+        'securityhub': 'Security Hub',
+        'sqs': 'SQS',
+        'sns': 'SNS',
+        'dynamodb': 'DynamoDB',
+        'elasticloadbalancing': 'ELB',
+        'autoscaling': 'Auto Scaling',
+        'cloudwatch': 'CloudWatch',
+        'logs': 'CloudWatch Logs',
+        'events': 'EventBridge',
+        'ssm': 'Systems Manager',
+        'secretsmanager': 'Secrets Manager',
+        'ecr': 'ECR',
+        'ecs': 'ECS',
+        'eks': 'EKS'
+      };
+      return serviceMap[match[1]] || match[1].toUpperCase();
+    }
+    return null;
+  }
+
+  /**
+   * Mappe rule.groups vers un nom de service
+   */
+  #mapGroupToService(group) {
+    if (!group) return null;
+    const lower = group.toLowerCase();
+    
+    const groupMap = {
+      'syscheck': 'File Integrity',
+      'vulnerability-detector': 'Vulnerability',
+      'sca': 'SCA',
+      'rootcheck': 'Rootcheck',
+      'osquery': 'Osquery',
+      'authentication': 'Authentication',
+      'sshd': 'SSH',
+      'pam': 'PAM',
+      'web': 'Web',
+      'apache': 'Apache',
+      'nginx': 'Nginx',
+      'aws': 'AWS',
+      'cloudtrail': 'CloudTrail'
+    };
+    
+    for (const [key, value] of Object.entries(groupMap)) {
+      if (lower.includes(key)) return value;
+    }
+    return null;
   }
 
   /**
@@ -348,8 +481,9 @@ class WazuhIndexerService {
   /**
    * Construit une requête de filtre OpenSearch
    */
-  #buildQuery({ level, agentId, search, ruleGroup, fromDate, toDate } = {}) {
+  #buildQuery({ level, agentId, search, ruleGroup, fromDate, toDate, service, provider } = {}) {
     const must = [];
+    const should = [];
 
     // Filtre par période temporelle
     if (fromDate || toDate) {
@@ -377,7 +511,110 @@ class WazuhIndexerService {
       must.push({ term: { 'rule.groups': ruleGroup } });
     }
 
+    // Filtre par service - recherche dans plusieurs champs
+    if (service) {
+      const serviceFilters = this.#buildServiceFilter(service);
+      if (serviceFilters.length > 0) {
+        must.push({
+          bool: {
+            should: serviceFilters,
+            minimum_should_match: 1
+          }
+        });
+      }
+    }
+
+    // Filtre par provider cloud
+    if (provider && provider !== 'all') {
+      const providerFilters = this.#buildProviderFilter(provider);
+      if (providerFilters.length > 0) {
+        must.push({
+          bool: {
+            should: providerFilters,
+            minimum_should_match: 1
+          }
+        });
+      }
+    }
+
     return must.length ? { bool: { must } } : { match_all: {} };
+  }
+
+  /**
+   * Construit les filtres pour un service spécifique
+   */
+  #buildServiceFilter(service) {
+    const filters = [];
+    const serviceLower = service.toLowerCase();
+
+    // Mapping des services vers leurs identifiants dans les logs
+    const serviceIdentifiers = {
+      'cloudtrail': ['cloudtrail'],
+      'guardduty': ['guardduty'],
+      'security hub': ['securityhub', 'security-hub'],
+      'aws config': ['config'],
+      'vpc flow logs': ['vpcflow', 'vpcflowlogs'],
+      's3': ['s3.amazonaws.com'],
+      'ec2': ['ec2.amazonaws.com'],
+      'iam': ['iam.amazonaws.com'],
+      'lambda': ['lambda.amazonaws.com'],
+      'rds': ['rds.amazonaws.com'],
+      'kms': ['kms.amazonaws.com'],
+      'sts': ['sts.amazonaws.com'],
+      'file integrity': ['syscheck', 'fim'],
+      'vulnerability': ['vulnerability-detector', 'vulnerability'],
+      'sca': ['sca', 'policy_monitoring'],
+      'authentication': ['authentication', 'pam', 'sshd'],
+      'ssh': ['sshd'],
+      'syslog': ['syslog']
+    };
+
+    const identifiers = serviceIdentifiers[serviceLower] || [serviceLower];
+
+    // Rechercher dans data.aws.source
+    identifiers.forEach(id => {
+      filters.push({ wildcard: { 'data.aws.source': `*${id}*` } });
+      filters.push({ wildcard: { 'data.aws.eventSource': `*${id}*` } });
+      filters.push({ term: { 'rule.groups': id } });
+    });
+
+    return filters;
+  }
+
+  /**
+   * Construit les filtres pour un provider cloud
+   */
+  #buildProviderFilter(provider) {
+    const filters = [];
+    const providerLower = provider.toLowerCase();
+
+    if (providerLower === 'aws') {
+      filters.push({ exists: { field: 'data.aws' } });
+      filters.push({ wildcard: { 'agent.name': '*aws*' } });
+      filters.push({ term: { 'agent.labels.source': 'aws' } });
+    } else if (providerLower === 'azure') {
+      filters.push({ exists: { field: 'data.azure' } });
+      filters.push({ wildcard: { 'agent.name': '*azure*' } });
+      filters.push({ term: { 'agent.labels.source': 'azure' } });
+    } else if (providerLower === 'gcp') {
+      filters.push({ exists: { field: 'data.gcp' } });
+      filters.push({ wildcard: { 'agent.name': '*gcp*' } });
+      filters.push({ term: { 'agent.labels.source': 'gcp' } });
+    } else if (providerLower === 'on premise') {
+      // Exclure les logs cloud
+      // Note: Cette logique est inversée, on retourne un must_not implicite
+      filters.push({ 
+        bool: { 
+          must_not: [
+            { exists: { field: 'data.aws' } },
+            { exists: { field: 'data.azure' } },
+            { exists: { field: 'data.gcp' } }
+          ]
+        }
+      });
+    }
+
+    return filters;
   }
 
   /**
@@ -391,11 +628,11 @@ class WazuhIndexerService {
       timestamp: rawTimestamp,
       time: this.#formatTime(rawTimestamp),
       provider: detectCloudProvider(source),
-      service: source.rule?.groups?.[0] || 'Wazuh',
+      service: detectService(source),
       severity: mapRuleLevelToSeverity(source.rule?.level),
       description: source.rule?.description || 'Alerte Wazuh',
       environment: source.agent?.name || 'Unknown',
-      region: source.location || 'local',
+      region: source.location || source.data?.aws?.awsRegion || 'local',
       status: 'New',
       
       // Données enrichies pour le détail

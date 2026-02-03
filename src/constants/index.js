@@ -10,24 +10,20 @@ export {
   CLOUD_PROVIDERS_LIST as CLOUD_PROVIDERS,
   SEVERITY_COLORS,
   STATUS_COLORS,
-  PAGINATION
+  PAGINATION,
+  SERVICE_CONFIG
 } from '../config/api.config';
 
 // Filtres rapides pour le dashboard
 export const QUICK_FILTERS = [
   { name: 'AWS', icon: '△', color: '#10B981' },
   { name: 'Critical', icon: '⬢', color: '#F59E0B' },
-  { name: 'Fixme', icon: '�', color: '#EF4444' }
+  { name: 'Fixme', icon: '◆', color: '#EF4444' }
 ];
 
-// Services cloud surveillés
-export const SERVICES = [
-  'CloudTrail',
-  'Defender',
-  'Audit Logs',
-  'Activity Logs',
-  'Security Hub'
-];
+// Services cloud surveillés - générés depuis SERVICE_CONFIG
+import { SERVICE_CONFIG } from '../config/api.config';
+export const SERVICES = [...new Set(Object.values(SERVICE_CONFIG).map(s => s.name))].sort();
 
 // Niveaux de sévérité pour les filtres
 export const SEVERITIES = [

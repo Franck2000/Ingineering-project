@@ -288,14 +288,14 @@ const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (
     <div className="w-full">
       {/* Barre de recherche */}
       <div className="relative">
-        <div className="flex items-center gap-2 flex-wrap p-2 bg-surface-secondary/60 border border-primary-500/30 rounded-lg focus-within:border-primary-400 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all">
-          <Filter size={16} className="text-primary-400/60 ml-1" />
+        <div className="flex items-center gap-1 sm:gap-2 flex-wrap p-2 bg-surface-secondary/60 border border-primary-500/30 rounded-lg focus-within:border-primary-400 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all">
+          <Filter size={16} className="text-primary-400/60 ml-1 flex-shrink-0" />
           
           {/* Toggle AND/OR - affiché seulement s'il y a des filtres */}
           {activeFilters.length > 0 && (
             <button
               onClick={() => setLogicOperator(prev => prev === 'AND' ? 'OR' : 'AND')}
-              className={`px-2 py-0.5 text-xs font-bold rounded transition-all ${
+              className={`px-2 py-0.5 text-xs font-bold rounded transition-all flex-shrink-0 ${
                 logicOperator === 'AND' 
                   ? 'bg-primary-500/40 text-primary-200 hover:bg-primary-500/60' 
                   : 'bg-cyber-pink/40 text-pink-200 hover:bg-cyber-pink/60'
@@ -335,7 +335,7 @@ const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (
             onFocus={() => setShowSuggestions(true)}
             onKeyDown={handleKeyDown}
             placeholder={activeFilters.length > 0 ? "Ajouter un filtre..." : placeholder}
-            className="flex-1 min-w-[200px] bg-transparent text-sm text-gray-200 placeholder-gray-500 focus:outline-none"
+            className="flex-1 min-w-[120px] sm:min-w-[200px] bg-transparent text-xs sm:text-sm text-gray-200 placeholder-gray-500 focus:outline-none"
           />
           
           {/* Bouton clear */}
@@ -394,9 +394,9 @@ const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (
 
       {/* Aide */}
       {showSuggestions && query === '' && activeFilters.length === 0 && (
-        <div className="mt-2 p-3 bg-surface-tertiary/50 rounded-lg border border-primary-500/20">
+        <div className="mt-2 p-2 sm:p-3 bg-surface-tertiary/50 rounded-lg border border-primary-500/20">
           <p className="text-xs text-gray-400 mb-2">💡 Syntaxe de recherche :</p>
-          <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             <div className="text-gray-500">
               <span className="text-primary-300 font-mono">agent.name:</span> recherche par nom d'agent
             </div>

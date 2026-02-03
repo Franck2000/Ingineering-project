@@ -177,3 +177,229 @@ export function detectCloudProvider(alert) {
   
   return 'On Premise';
 }
+
+// ============================================
+// DÉTECTION DE SERVICE
+// ============================================
+
+/**
+ * Configuration des services détectables
+ * Mapping: identifiants dans les logs -> nom affiché
+ */
+export const SERVICE_CONFIG = {
+  // AWS Services
+  cloudtrail: {
+    name: 'CloudTrail',
+    provider: 'AWS',
+    identifiers: ['cloudtrail', 'aws.cloudtrail']
+  },
+  guardduty: {
+    name: 'GuardDuty',
+    provider: 'AWS',
+    identifiers: ['guardduty', 'aws.guardduty']
+  },
+  securityhub: {
+    name: 'Security Hub',
+    provider: 'AWS',
+    identifiers: ['securityhub', 'security-hub', 'aws.securityhub']
+  },
+  config: {
+    name: 'AWS Config',
+    provider: 'AWS',
+    identifiers: ['config.amazonaws.com', 'aws.config']
+  },
+  vpc: {
+    name: 'VPC Flow Logs',
+    provider: 'AWS',
+    identifiers: ['vpcflowlogs', 'vpc-flow-logs', 'aws.vpcflow']
+  },
+  s3: {
+    name: 'S3',
+    provider: 'AWS',
+    identifiers: ['s3.amazonaws.com']
+  },
+  ec2: {
+    name: 'EC2',
+    provider: 'AWS',
+    identifiers: ['ec2.amazonaws.com']
+  },
+  iam: {
+    name: 'IAM',
+    provider: 'AWS',
+    identifiers: ['iam.amazonaws.com']
+  },
+  lambda: {
+    name: 'Lambda',
+    provider: 'AWS',
+    identifiers: ['lambda.amazonaws.com']
+  },
+  rds: {
+    name: 'RDS',
+    provider: 'AWS',
+    identifiers: ['rds.amazonaws.com']
+  },
+  kms: {
+    name: 'KMS',
+    provider: 'AWS',
+    identifiers: ['kms.amazonaws.com']
+  },
+  sts: {
+    name: 'STS',
+    provider: 'AWS',
+    identifiers: ['sts.amazonaws.com']
+  },
+  organizations: {
+    name: 'Organizations',
+    provider: 'AWS',
+    identifiers: ['organizations.amazonaws.com']
+  },
+  
+  // Azure Services
+  defender: {
+    name: 'Defender',
+    provider: 'Azure',
+    identifiers: ['defender', 'azure.defender', 'microsoft.security']
+  },
+  activitylog: {
+    name: 'Activity Log',
+    provider: 'Azure',
+    identifiers: ['activitylog', 'azure.activitylog', 'microsoft.insights']
+  },
+  entra: {
+    name: 'Entra ID',
+    provider: 'Azure',
+    identifiers: ['entra', 'azure.entra', 'microsoft.aad', 'azuread']
+  },
+  
+  // GCP Services
+  auditlogs: {
+    name: 'Audit Logs',
+    provider: 'GCP',
+    identifiers: ['auditlogs', 'gcp.auditlog', 'cloudaudit.googleapis.com']
+  },
+  scc: {
+    name: 'Security Command Center',
+    provider: 'GCP',
+    identifiers: ['securitycenter', 'scc', 'gcp.scc']
+  },
+  
+  // Wazuh / On-Premise
+  syscheck: {
+    name: 'File Integrity',
+    provider: 'Wazuh',
+    identifiers: ['syscheck', 'fim']
+  },
+  vulnerability: {
+    name: 'Vulnerability',
+    provider: 'Wazuh',
+    identifiers: ['vulnerability-detector', 'vulnerability']
+  },
+  sca: {
+    name: 'SCA',
+    provider: 'Wazuh',
+    identifiers: ['sca', 'policy_monitoring']
+  },
+  rootcheck: {
+    name: 'Rootcheck',
+    provider: 'Wazuh',
+    identifiers: ['rootcheck']
+  },
+  osquery: {
+    name: 'Osquery',
+    provider: 'Wazuh',
+    identifiers: ['osquery']
+  },
+  authentication: {
+    name: 'Authentication',
+    provider: 'System',
+    identifiers: ['authentication', 'pam', 'sshd', 'login']
+  },
+  syslog: {
+    name: 'Syslog',
+    provider: 'System',
+    identifiers: ['syslog']
+  }
+};
+
+/**
+ * Détecte le service depuis une alerte Wazuh
+ * Analyse: data.aws.source, data.aws.eventSource, rule.groups, decoder.name
+ */
+export function detectService(alert) {
+  const data = alert.data || {};
+  const awsData = data.aws || {};
+  const azureData = data.azure || {};
+  const gcpData = data.gcp || {};
+  
+  // 1. AWS: vérifier data.aws.source (le plus fiable pour AWS)
+  const awsSource = awsData.source?.toLowerCase() || '';
+  if (awsSource) {
+    for (const [key, service] of Object.entries(SERVICE_CONFIG)) {
+      if (service.provider === 'AWS' && service.identifiers.some(id => awsSource.includes(id.toLowerCase()))) {
+        return service.name;
+      }
+    }
+  }
+  
+  // 2. AWS: vérifier data.aws.eventSource (ex: s3.amazonaws.com)
+  const eventSource = awsData.eventSource?.toLowerCase() || '';
+  if (eventSource) {
+    for (const [key, service] of Object.entries(SERVICE_CONFIG)) {
+      if (service.identifiers.some(id => eventSource.includes(id.toLowerCase()))) {
+        return service.name;
+      }
+    }
+    // Extraire le nom du service de eventSource (ex: s3.amazonaws.com -> S3)
+    const match = eventSource.match(/^([a-z0-9-]+)\.amazonaws\.com/);
+    if (match) {
+      return match[1].toUpperCase();
+    }
+  }
+  
+  // 3. Azure: vérifier data.azure
+  const azureProvider = azureData.provider?.toLowerCase() || '';
+  const azureCategory = azureData.category?.toLowerCase() || '';
+  if (azureProvider || azureCategory) {
+    for (const [key, service] of Object.entries(SERVICE_CONFIG)) {
+      if (service.provider === 'Azure' && 
+          service.identifiers.some(id => 
+            azureProvider.includes(id.toLowerCase()) || 
+            azureCategory.includes(id.toLowerCase())
+          )) {
+        return service.name;
+      }
+    }
+  }
+  
+  // 4. GCP: vérifier data.gcp
+  const gcpService = gcpData.serviceName?.toLowerCase() || '';
+  if (gcpService) {
+    for (const [key, service] of Object.entries(SERVICE_CONFIG)) {
+      if (service.provider === 'GCP' && 
+          service.identifiers.some(id => gcpService.includes(id.toLowerCase()))) {
+        return service.name;
+      }
+    }
+  }
+  
+  // 5. Vérifier rule.groups pour les services Wazuh
+  const ruleGroups = (alert.rule?.groups || []).map(g => g.toLowerCase());
+  for (const [key, service] of Object.entries(SERVICE_CONFIG)) {
+    if (service.identifiers.some(id => ruleGroups.some(g => g.includes(id.toLowerCase())))) {
+      return service.name;
+    }
+  }
+  
+  // 6. Vérifier decoder.name
+  const decoderName = alert.decoder?.name?.toLowerCase() || '';
+  if (decoderName) {
+    for (const [key, service] of Object.entries(SERVICE_CONFIG)) {
+      if (service.identifiers.some(id => decoderName.includes(id.toLowerCase()))) {
+        return service.name;
+      }
+    }
+  }
+  
+  // 7. Fallback: premier groupe de règle ou 'Unknown'
+  return alert.rule?.groups?.[0] || 'Unknown';
+}

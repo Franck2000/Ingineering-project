@@ -68,22 +68,22 @@ const FieldCategory = ({ category, fields, copiedField, onCopy }) => {
   if (fields.length === 0) return null;
 
   return (
-    <div className="mb-6">
-      <h3 className="text-sm font-bold text-primary-300 mb-3 flex items-center gap-2">
+    <div className="mb-4 sm:mb-6">
+      <h3 className="text-xs sm:text-sm font-bold text-primary-300 mb-2 sm:mb-3 flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-primary-500"></span>
         {category}
       </h3>
-      <div className="overflow-x-auto">
-        <table className="w-full">
+      <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
+        <table className="w-full min-w-[400px] sm:min-w-0">
           <thead>
             <tr className="bg-surface-tertiary/50">
-              <th className="px-4 py-2 text-left text-xs font-bold text-primary-200 border-b border-primary-500/30 w-1/3">
+              <th className="px-2 sm:px-4 py-2 text-left text-xs font-bold text-primary-200 border-b border-primary-500/30 w-1/3">
                 Champ
               </th>
-              <th className="px-4 py-2 text-left text-xs font-bold text-primary-200 border-b border-primary-500/30">
+              <th className="px-2 sm:px-4 py-2 text-left text-xs font-bold text-primary-200 border-b border-primary-500/30">
                 Valeur
               </th>
-              <th className="px-4 py-2 text-center text-xs font-bold text-primary-200 border-b border-primary-500/30 w-16">
+              <th className="px-2 sm:px-4 py-2 text-center text-xs font-bold text-primary-200 border-b border-primary-500/30 w-12 sm:w-16">
                 Copier
               </th>
             </tr>
@@ -94,10 +94,10 @@ const FieldCategory = ({ category, fields, copiedField, onCopy }) => {
                 key={field.key}
                 className={`hover:bg-primary-500/10 transition-colors ${idx % 2 === 0 ? 'bg-surface-secondary/30' : ''}`}
               >
-                <td className="px-4 py-2.5 text-sm font-mono text-primary-300 border-b border-primary-500/10">
+                <td className="px-2 sm:px-4 py-2 text-xs sm:text-sm font-mono text-primary-300 border-b border-primary-500/10 break-all">
                   {field.key}
                 </td>
-                <td className="px-4 py-2.5 text-sm text-gray-300 border-b border-primary-500/10 break-all">
+                <td className="px-2 sm:px-4 py-2 text-xs sm:text-sm text-gray-300 border-b border-primary-500/10 break-all">
                   {field.value.length > 200 ? (
                     <details className="cursor-pointer">
                       <summary className="text-primary-400 hover:text-primary-300">
@@ -113,10 +113,10 @@ const FieldCategory = ({ category, fields, copiedField, onCopy }) => {
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-2.5 text-center border-b border-primary-500/10">
+                <td className="px-2 sm:px-4 py-2 text-center border-b border-primary-500/10">
                   <button
                     onClick={() => onCopy(field.value, field.key)}
-                    className="p-1.5 rounded hover:bg-primary-500/20 text-gray-500 hover:text-primary-300 transition-all"
+                    className="p-1 sm:p-1.5 rounded hover:bg-primary-500/20 text-gray-500 hover:text-primary-300 transition-all"
                     title="Copier la valeur"
                   >
                     {copiedField === field.key ? (
@@ -153,19 +153,19 @@ const LogDetailsModal = ({ alert, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       
       <div 
-        className="relative w-full max-w-4xl max-h-[85vh] bg-surface-card border border-primary-500/30 rounded-xl shadow-2xl overflow-hidden"
+        className="relative w-full h-full sm:h-auto sm:max-w-4xl sm:max-h-[85vh] bg-surface-card border border-primary-500/30 sm:rounded-xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         style={{ boxShadow: '0 0 60px rgba(139, 92, 246, 0.3)' }}
       >
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-surface-tertiary/90 backdrop-blur-md border-b border-primary-500/30">
-          <div className="flex items-center gap-3">
-            <Eye size={22} className="text-primary-400" />
-            <h2 className="text-lg font-bold text-gradient">Détails du Log</h2>
+        <div className="sticky top-0 z-10 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 bg-surface-tertiary/90 backdrop-blur-md border-b border-primary-500/30">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <Eye size={20} className="text-primary-400 sm:w-[22px] sm:h-[22px]" />
+            <h2 className="text-base sm:text-lg font-bold text-gradient">Détails du Log</h2>
             <span 
               className="px-2 py-1 rounded text-xs font-bold"
               style={{ 
@@ -186,7 +186,7 @@ const LogDetailsModal = ({ alert, onClose }) => {
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(85vh-80px)] p-6">
+        <div className="overflow-y-auto h-[calc(100vh-60px)] sm:max-h-[calc(85vh-80px)] p-3 sm:p-6">
           {Object.entries(categorizedFields).map(([category, fields]) => (
             <FieldCategory 
               key={category}
@@ -199,12 +199,12 @@ const LogDetailsModal = ({ alert, onClose }) => {
 
           {/* Full Log brut */}
           {alert.full_log && (
-            <div className="mt-6">
-              <h3 className="text-sm font-bold text-primary-300 mb-3 flex items-center gap-2">
+            <div className="mt-4 sm:mt-6">
+              <h3 className="text-sm font-bold text-primary-300 mb-2 sm:mb-3 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-cyber-pink"></span>
                 Log Brut Complet
               </h3>
-              <pre className="p-4 bg-surface-tertiary/50 rounded-lg text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap border border-primary-500/20">
+              <pre className="p-3 sm:p-4 bg-surface-tertiary/50 rounded-lg text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap border border-primary-500/20">
                 {alert.full_log}
               </pre>
             </div>

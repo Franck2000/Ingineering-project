@@ -1,6 +1,6 @@
 import React from 'react';
-import { ChevronDown, Monitor, AlertTriangle } from 'lucide-react';
-import { CLOUD_PROVIDERS, QUICK_FILTERS, SERVICES, SEVERITIES, REGIONS } from '../../constants';
+import { ChevronDown, Monitor } from 'lucide-react';
+import { CLOUD_PROVIDERS, QUICK_FILTERS, SEVERITIES, REGIONS } from '../../constants';
 
 // Style commun pour les selects
 const SELECT_STYLE = {
@@ -23,7 +23,8 @@ const FilterPanel = ({
   onRegionChange,
   onSourceChange,
   onClearFilters,
-  availableSources = []
+  availableSources = [],
+  availableServices = []
 }) => {
   return (
     <div className="flex flex-col gap-5">
@@ -81,17 +82,17 @@ const FilterPanel = ({
         </div>
       </div>
 
-      {/* Service */}
+      {/* Service - Dynamique depuis les logs */}
       <div className="flex flex-col gap-2">
         <label className="text-sm font-semibold text-gray-200">Service</label>
         <select
-          value={filters.service}
+          value={filters.service || ''}
           onChange={(e) => onServiceChange(e.target.value)}
           className="w-full px-3 py-3 bg-surface-secondary/60 border border-primary-500/20 rounded-lg text-gray-200 focus:outline-none focus:border-primary-400/60 appearance-none cursor-pointer"
           style={SELECT_STYLE}
         >
           <option value="">Tous les services</option>
-          {SERVICES.map(service => (
+          {availableServices.map(service => (
             <option key={service} value={service}>
               {service}
             </option>

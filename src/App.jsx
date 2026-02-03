@@ -42,6 +42,7 @@ function App() {
   const [activeSubPage, setActiveSubPage] = useState(null);
   const [selectedAgentId, setSelectedAgentId] = useState(null);
   const [panelMode, setPanelMode] = useState(PANEL_MODE.MENU);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // État local pour les données
   const [filteredAlerts, setFilteredAlerts] = useState([]);
@@ -49,6 +50,7 @@ function App() {
   const [pendingAlerts, setPendingAlerts] = useState([]); // Alertes en attente
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [availableSources, setAvailableSources] = useState([]);
+  const [availableServices, setAvailableServices] = useState([]); // Services dynamiques depuis les logs
   const [isLive, setIsLive] = useState(true); // Mode live activé par défaut
   const [newAlertsCount, setNewAlertsCount] = useState(0); // Compteur d'alertes en attente
   const [timeRange, setTimeRange] = useState({ type: 'relative', value: '24h', minutes: 1440, label: 'Last 24 hours' }); // Période temporelle
@@ -319,6 +321,10 @@ function App() {
         // Extraire les sources uniques des alertes
         const sources = [...new Set(data.map(alert => alert.environment).filter(Boolean))];
         setAvailableSources(sources.sort());
+
+        // Extraire les services uniques des alertes
+        const services = [...new Set(data.map(alert => alert.service).filter(Boolean))];
+        setAvailableServices(services.sort());
       } catch (error) {
         console.error('Erreur chargement alertes:', error);
       }
@@ -455,6 +461,8 @@ function App() {
         onNavigate={handleNavigate}
         panelMode={panelMode}
         onPanelModeChange={setPanelMode}
+        isMobileOpen={isMobileMenuOpen}
+        onMobileClose={() => setIsMobileMenuOpen(false)}
         filtersComponent={
           <FilterPanel
             filters={filters}
@@ -466,6 +474,7 @@ function App() {
             onSourceChange={setSource}
             onClearFilters={clearFilters}
             availableSources={availableSources}
+            availableServices={availableServices}
           />
         }
       />
@@ -483,7 +492,7 @@ function App() {
           isLive={isLive}
           onToggleLive={() => setIsLive(!isLive)}
           newAlertsCount={newAlertsCount}
-          onMenuClick={() => setPanelMode(panelMode === PANEL_MODE.MENU ? PANEL_MODE.FILTERS : PANEL_MODE.MENU)}
+          onMenuClick={() => setIsMobileMenuOpen(true)}
           timeRange={timeRange}
           onTimeRangeChange={setTimeRange}
         />

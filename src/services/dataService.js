@@ -344,6 +344,26 @@ class DataService {
   }
 
   /**
+   * Récupère tous les services disponibles dans les logs
+   * @param {Object} options - Options de filtrage (dates)
+   */
+  async getAvailableServices(options = {}) {
+    if (!wazuhAuth.isAuthenticated()) {
+      return [];
+    }
+
+    try {
+      return await wazuhIndexer.getAvailableServices({
+        fromDate: options.fromDate,
+        toDate: options.toDate
+      });
+    } catch (error) {
+      console.error('Erreur récupération services:', error);
+      return [];
+    }
+  }
+
+  /**
    * Filtre les alertes selon les critères (filtrage client pour les filtres UI)
    * Note: Le filtrage par date est fait côté serveur
    */
