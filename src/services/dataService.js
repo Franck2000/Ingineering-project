@@ -190,6 +190,9 @@ class DataService {
     if (filters.region) {
       filtered = filtered.filter(a => a.region === filters.region);
     }
+    if (filters.source) {
+      filtered = filtered.filter(a => a.environment === filters.source);
+    }
 
     return filtered;
   }

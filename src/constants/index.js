@@ -38,23 +38,10 @@ export const SEVERITIES = [
   { value: 'Low', label: 'Low' }
 ];
 
-// Environnements disponibles
-export const ENVIRONMENTS = [
-  { value: '', label: 'Tous' },
-  { value: 'Production', label: 'Production' },
-  { value: 'Preprod', label: 'Preprod' },
-  { value: 'Dev', label: 'Dev' }
-];
-
 // Régions cloud
 export const REGIONS = [
   'us-east-1',
   'eu-west-1',
   'ap-south-1',
   'us-west-2'
-];
-
-// Sources des logs (agents Wazuh) - Liste par défaut, sera complétée dynamiquement
-export const SOURCES = [
-  { value: '', label: 'Toutes les sources' }
 ];
