@@ -27,6 +27,7 @@ const flattenObject = (obj, prefix = '') => {
 /**
  * Composant AdvancedSearch - Recherche avec auto-complétion par champs
  * Syntaxe: champ:valeur OU recherche libre
+ * Supporte les opérateurs AND et OR entre chaque filtre individuellement
  * Conserve les filtres même lors du refresh des données
  */
 const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (ex: agent.name:wazuh-server)" }) => {
@@ -34,8 +35,8 @@ const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [activeFilters, setActiveFilters] = useState([]);
-  const [logicOperator, setLogicOperator] = useState('AND'); // 'AND' ou 'OR'
+  const [activeFilters, setActiveFilters] = useState([]); // Chaque filtre a { field, value, display, operator }
+  const [nextOperator, setNextOperator] = useState('AND'); // Opérateur pour le prochain filtre
   const inputRef = useRef(null);
   const suggestionsRef = useRef(null);
   
@@ -127,9 +128,13 @@ const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (
     setSelectedIndex(-1);
   }, [query, availableFields, fieldIndex]);
 
-  // Appliquer un filtre
+  // Appliquer un filtre avec l'opérateur courant
   const applyFilter = (filter) => {
-    const newFilters = [...activeFilters, filter];
+    const newFilter = {
+      ...filter,
+      operator: activeFilters.length === 0 ? null : nextOperator // Premier filtre n'a pas d'opérateur
+    };
+    const newFilters = [...activeFilters, newFilter];
     setActiveFilters(newFilters);
     setQuery('');
     setShowSuggestions(false);
@@ -138,6 +143,20 @@ const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (
   // Supprimer un filtre
   const removeFilter = (index) => {
     const newFilters = activeFilters.filter((_, i) => i !== index);
+    // Si on supprime le premier filtre, le nouveau premier n'a plus d'opérateur
+    if (index === 0 && newFilters.length > 0) {
+      newFilters[0] = { ...newFilters[0], operator: null };
+    }
+    setActiveFilters(newFilters);
+  };
+
+  // Changer l'opérateur d'un filtre spécifique
+  const toggleFilterOperator = (index) => {
+    const newFilters = [...activeFilters];
+    newFilters[index] = {
+      ...newFilters[index],
+      operator: newFilters[index].operator === 'AND' ? 'OR' : 'AND'
+    };
     setActiveFilters(newFilters);
   };
 
@@ -169,34 +188,54 @@ const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (
     setShowSuggestions(false);
   };
 
-  // Filtrer les alertes
+  // Filtrer les alertes avec support des opérateurs mixtes AND/OR
   useEffect(() => {
     let filtered = [...alerts];
     
     // Déterminer si des filtres sont actifs
     const hasActiveFilters = activeFilters.length > 0 || query.trim().length > 0;
 
-    // Appliquer les filtres actifs avec la logique ET ou OU
+    // Appliquer les filtres actifs avec opérateurs mixtes
     if (activeFilters.length > 0) {
-      if (logicOperator === 'AND') {
-        // Logique ET : toutes les conditions doivent être vraies
-        activeFilters.forEach(filter => {
-          filtered = filtered.filter(alert => {
-            const flattened = flattenObject(alert._source || alert);
-            const fieldValue = flattened[filter.field];
-            return fieldValue && fieldValue.toLowerCase().includes(filter.value.toLowerCase());
-          });
+      // Fonction helper pour tester si un filtre match une alerte
+      const matchesFilter = (alert, filter) => {
+        const flattened = flattenObject(alert._source || alert);
+        const fieldValue = flattened[filter.field];
+        return fieldValue && fieldValue.toLowerCase().includes(filter.value.toLowerCase());
+      };
+
+      // Évaluer les filtres avec leurs opérateurs
+      // On groupe par OR, puis on applique AND dans chaque groupe
+      // Ex: A AND B OR C AND D => (A AND B) OR (C AND D)
+      filtered = filtered.filter(alert => {
+        // Construire les groupes séparés par OR
+        const groups = [];
+        let currentGroup = [];
+        
+        activeFilters.forEach((filter, index) => {
+          if (index === 0 || filter.operator === 'AND') {
+            // Ajouter au groupe courant
+            currentGroup.push(filter);
+          } else {
+            // OR: nouveau groupe
+            if (currentGroup.length > 0) {
+              groups.push(currentGroup);
+            }
+            currentGroup = [filter];
+          }
         });
-      } else {
-        // Logique OU : au moins une condition doit être vraie
-        filtered = filtered.filter(alert => {
-          const flattened = flattenObject(alert._source || alert);
-          return activeFilters.some(filter => {
-            const fieldValue = flattened[filter.field];
-            return fieldValue && fieldValue.toLowerCase().includes(filter.value.toLowerCase());
-          });
-        });
-      }
+        
+        // Ajouter le dernier groupe
+        if (currentGroup.length > 0) {
+          groups.push(currentGroup);
+        }
+        
+        // Évaluer: un groupe doit matcher (OR entre groupes)
+        // Dans chaque groupe, tous les filtres doivent matcher (AND)
+        return groups.some(group => 
+          group.every(filter => matchesFilter(alert, filter))
+        );
+      });
     }
 
     // Appliquer la recherche textuelle
@@ -230,9 +269,12 @@ const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (
     }
 
     // Passer les résultats filtrés, l'état des filtres et la signature au parent
-    const filterSignature = JSON.stringify({ filters: activeFilters.map(f => f.display), query: query.trim(), logic: logicOperator });
+    const filterSignature = JSON.stringify({ 
+      filters: activeFilters.map(f => ({ display: f.display, operator: f.operator })), 
+      query: query.trim() 
+    });
     onFilteredResults(filtered, hasActiveFilters, filterSignature);
-  }, [alerts, activeFilters, query, logicOperator, onFilteredResults]);
+  }, [alerts, activeFilters, query, onFilteredResults]);
 
   // Gestion du clavier
   const handleKeyDown = (e) => {
@@ -291,37 +333,54 @@ const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (
         <div className="flex items-center gap-1 sm:gap-2 flex-wrap p-2 bg-surface-secondary/60 border border-primary-500/30 rounded-lg focus-within:border-primary-400 focus-within:ring-2 focus-within:ring-primary-500/20 transition-all">
           <Filter size={16} className="text-primary-400/60 ml-1 flex-shrink-0" />
           
-          {/* Toggle AND/OR - affiché seulement s'il y a des filtres */}
+          {/* Filtres actifs avec opérateurs cliquables */}
+          {activeFilters.map((filter, index) => (
+            <React.Fragment key={index}>
+              {/* Opérateur cliquable (affiché avant chaque filtre sauf le premier) */}
+              {filter.operator && (
+                <button
+                  onClick={() => toggleFilterOperator(index)}
+                  className={`px-2 py-0.5 text-xs font-bold rounded transition-all flex-shrink-0 ${
+                    filter.operator === 'AND' 
+                      ? 'bg-primary-500/40 text-primary-200 hover:bg-primary-500/60' 
+                      : 'bg-cyber-pink/40 text-pink-200 hover:bg-cyber-pink/60'
+                  }`}
+                  title={`Cliquer pour changer en ${filter.operator === 'AND' ? 'OR' : 'AND'}`}
+                >
+                  {filter.operator}
+                </button>
+              )}
+              
+              {/* Badge du filtre */}
+              <span 
+                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-primary-500/30 text-primary-200 rounded-md"
+              >
+                <span className="text-primary-400">{filter.field}:</span>
+                <span>{filter.value}</span>
+                <button
+                  onClick={() => removeFilter(index)}
+                  className="ml-1 hover:text-red-400 transition-colors"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            </React.Fragment>
+          ))}
+          
+          {/* Sélecteur d'opérateur pour le prochain filtre */}
           {activeFilters.length > 0 && (
             <button
-              onClick={() => setLogicOperator(prev => prev === 'AND' ? 'OR' : 'AND')}
-              className={`px-2 py-0.5 text-xs font-bold rounded transition-all flex-shrink-0 ${
-                logicOperator === 'AND' 
-                  ? 'bg-primary-500/40 text-primary-200 hover:bg-primary-500/60' 
-                  : 'bg-cyber-pink/40 text-pink-200 hover:bg-cyber-pink/60'
+              onClick={() => setNextOperator(prev => prev === 'AND' ? 'OR' : 'AND')}
+              className={`px-1.5 py-0.5 text-[10px] font-bold rounded border-dashed border transition-all flex-shrink-0 ${
+                nextOperator === 'AND' 
+                  ? 'border-primary-500/50 text-primary-300 hover:bg-primary-500/20' 
+                  : 'border-pink-500/50 text-pink-300 hover:bg-pink-500/20'
               }`}
-              title={logicOperator === 'AND' ? 'Mode ET: toutes les conditions' : 'Mode OU: au moins une condition'}
+              title={`Prochain opérateur: ${nextOperator}. Cliquer pour changer.`}
             >
-              {logicOperator}
+              +{nextOperator}
             </button>
           )}
-          
-          {/* Filtres actifs */}
-          {activeFilters.map((filter, index) => (
-            <span 
-              key={index}
-              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-primary-500/30 text-primary-200 rounded-md"
-            >
-              <span className="text-primary-400">{filter.field}:</span>
-              <span>{filter.value}</span>
-              <button
-                onClick={() => removeFilter(index)}
-                className="ml-1 hover:text-red-400 transition-colors"
-              >
-                <X size={12} />
-              </button>
-            </span>
-          ))}
           
           {/* Input */}
           <input
@@ -408,6 +467,14 @@ const AdvancedSearch = ({ alerts, onFilteredResults, placeholder = "Rechercher (
             </div>
             <div className="text-gray-500">
               <span className="text-primary-300 font-mono">provider:</span> recherche par provider
+            </div>
+          </div>
+          <div className="mt-3 pt-2 border-t border-primary-500/20">
+            <p className="text-xs text-gray-400 mb-1">🔗 Opérateurs logiques :</p>
+            <div className="text-xs text-gray-500">
+              Cliquez sur <span className="px-1 py-0.5 bg-primary-500/40 text-primary-200 rounded text-[10px] font-bold">AND</span> ou <span className="px-1 py-0.5 bg-cyber-pink/40 text-pink-200 rounded text-[10px] font-bold">OR</span> entre les filtres pour changer l'opérateur.
+              <br />
+              <span className="text-gray-400">Ex:</span> filtre1 <span className="text-primary-300">AND</span> filtre2 <span className="text-pink-300">OR</span> filtre3 = (filtre1 ET filtre2) OU filtre3
             </div>
           </div>
         </div>

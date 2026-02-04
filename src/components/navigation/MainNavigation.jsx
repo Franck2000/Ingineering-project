@@ -4,6 +4,7 @@ import {
   Database, LayoutDashboard, ChevronRight, ChevronDown,
   Activity, Filter, Menu, X
 } from 'lucide-react';
+import logo from '../../assets/logo.png';
 
 // Modes d'affichage du panneau
 export const PANEL_MODE = {
@@ -218,9 +219,12 @@ const MainNavigation = ({
         <div className="p-4 border-b border-primary-500/20">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-pink-500 flex items-center justify-center flex-shrink-0">
-                <Shield size={24} className="text-white" />
-              </div>
+              <img 
+                src={logo} 
+                alt="Unicorns" 
+                className="w-10 h-10 object-contain drop-shadow-lg" 
+                style={{filter: 'drop-shadow(0 4px 12px rgba(59, 130, 246, 0.4))'}} 
+              />
               <div>
                 <h1 className="text-lg font-bold text-gradient">Unicorns</h1>
                 <p className="text-xs text-gray-500">Security Platform</p>
